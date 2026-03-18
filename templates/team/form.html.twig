@@ -1,0 +1,25 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ title }} | Client Secrets Vault{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block page_intro %}Les utilisateurs créés devront configurer leur TOTP à la première connexion.{% endblock %}
+
+{% block body %}
+    <section class="panel">
+        {{ form_start(form, {attr: {class: 'stack'}}) }}
+            <div class="form-grid">
+                <div class="field">{{ form_label(form.email) }}{{ form_widget(form.email) }}{{ form_errors(form.email) }}</div>
+                <div class="field">{{ form_label(form.firstName) }}{{ form_widget(form.firstName) }}{{ form_errors(form.firstName) }}</div>
+                <div class="field">{{ form_label(form.lastName) }}{{ form_widget(form.lastName) }}{{ form_errors(form.lastName) }}</div>
+                <div class="field">{{ form_label(form.isActive) }}{{ form_widget(form.isActive) }}{{ form_errors(form.isActive) }}</div>
+                <div class="field-wide">{{ form_label(form.plainPassword) }}{{ form_widget(form.plainPassword) }}{{ form_errors(form.plainPassword) }}</div>
+                <div class="field">{{ form_label(form.is_admin) }}{{ form_widget(form.is_admin) }}{{ form_errors(form.is_admin) }}</div>
+                <div class="field">{{ form_label(form.reset_totp) }}{{ form_widget(form.reset_totp) }}{{ form_errors(form.reset_totp) }}</div>
+            </div>
+            <div class="actions">
+                <button type="submit">Enregistrer</button>
+                <a class="button button--ghost" href="{{ path('app_team_index') }}">Retour</a>
+            </div>
+        {{ form_end(form) }}
+    </section>
+{% endblock %}

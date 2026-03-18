@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+unset DATABASE_URL
+exec php "$(dirname "$0")/console" "$@"

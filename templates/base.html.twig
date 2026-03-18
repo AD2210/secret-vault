@@ -1,17 +1,64 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
     <head>
         <meta charset="UTF-8">
-        <title>{% block title %}Welcome!{% endblock %}</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
-        {% block stylesheets %}
-        {% endblock %}
-
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{% block title %}Client Secrets Vault{% endblock %}</title>
+        {% block stylesheets %}{% endblock %}
         {% block javascripts %}
             {% block importmap %}{{ importmap('app') }}{% endblock %}
         {% endblock %}
     </head>
     <body>
-        {% block body %}{% endblock %}
+        <div class="layout">
+            <aside class="sidebar">
+                <div class="brand">
+                    <span class="brand__eyebrow">Vault</span>
+                    <h1>Client Secrets Vault</h1>
+                    <p>Coffre-fort chiffré pour les secrets applicatifs, accès durci par mot de passe et TOTP.</p>
+                </div>
+
+                <nav class="nav">
+                    {% set currentRoute = app.request.attributes.get('_route') %}
+                    <a href="{{ path('app_dashboard') }}" class="{{ currentRoute == 'app_dashboard' ? 'is-active' : '' }}">Tableau de bord</a>
+                    <a href="{{ path('app_project_index') }}" class="{{ currentRoute starts with 'app_project_' ? 'is-active' : '' }}">Projets</a>
+                    {% if is_granted('ROLE_ADMIN') %}
+                        <a href="{{ path('app_team_index') }}" class="{{ currentRoute starts with 'app_team_' ? 'is-active' : '' }}">Équipe</a>
+                    {% endif %}
+                    <a href="{{ path('app_2fa_setup') }}" class="{{ currentRoute == 'app_2fa_setup' ? 'is-active' : '' }}">2FA</a>
+                </nav>
+
+                <div class="sidebar__foot">
+                    <div>{{ app.user ? app.user.displayName : '' }}</div>
+                    <div class="muted">{{ app.user ? app.user.email : '' }}</div>
+                    <div class="actions" style="margin-top: 16px;">
+                        <a class="button button--ghost" href="{{ path('app_logout') }}">Déconnexion</a>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="content">
+                <div class="content__header">
+                    <div>
+                        <h2>{% block page_title %}Vault{% endblock %}</h2>
+                        <p>{% block page_intro %}Pilotage des secrets et accès protégés.{% endblock %}</p>
+                    </div>
+                    <div class="actions">
+                        {% block header_actions %}{% endblock %}
+                    </div>
+                </div>
+
+                <div class="flash-group">
+                    {% for message in app.flashes('success') %}
+                        <div class="flash flash--success">{{ message }}</div>
+                    {% endfor %}
+                    {% for message in app.flashes('error') %}
+                        <div class="flash flash--error">{{ message }}</div>
+                    {% endfor %}
+                </div>
+
+                {% block body %}{% endblock %}
+            </main>
+        </div>
     </body>
 </html>

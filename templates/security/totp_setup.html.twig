@@ -1,0 +1,35 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Activer le 2FA | Client Secrets Vault{% endblock %}
+{% block page_title %}Activer le 2FA{% endblock %}
+{% block page_intro %}Le coffre-fort impose une authentification forte. Scanne le QR code puis valide un premier code TOTP.{% endblock %}
+
+{% block body %}
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <section class="panel panel--hero qr-card">
+            <span class="badge badge--success">Étape 1</span>
+            <img src="{{ qrCodeDataUri }}" alt="QR code TOTP">
+            <div class="muted">Secret manuel: <strong>{{ manualSecret }}</strong></div>
+            <div class="help">Compatible Google Authenticator, 1Password, Ente Auth, Aegis, Bitwarden.</div>
+        </section>
+
+        <section class="panel">
+            <span class="badge">Étape 2</span>
+            <h3>Valider le code</h3>
+            <p class="muted">Une fois le secret importé, saisis le code généré pour verrouiller définitivement l’accès en MFA.</p>
+            {{ form_start(form, {attr: {class: 'stack'}}) }}
+                <div class="field">
+                    {{ form_label(form.code) }}
+                    {{ form_widget(form.code) }}
+                    {{ form_errors(form.code) }}
+                </div>
+                <button type="submit">Activer le double facteur</button>
+            {{ form_end(form) }}
+
+            <div class="panel" style="margin-top: 20px;">
+                <div class="help">URI de provisioning</div>
+                <div class="secret-box">{{ qrPayload }}</div>
+            </div>
+        </section>
+    </div>
+{% endblock %}

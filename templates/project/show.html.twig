@@ -1,0 +1,99 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ project.name }} | Client Secrets Vault{% endblock %}
+{% block page_title %}{{ project.name }}{% endblock %}
+{% block page_intro %}{{ project.client }}{% if project.domain %} · {{ project.domain }}{% endif %}{% endblock %}
+{% block header_actions %}
+    <a class="button" href="{{ path('app_secret_new', {id: project.idString}) }}">Ajouter un secret</a>
+    <a class="button button--ghost" href="{{ path('app_project_edit', {id: project.idString}) }}">Modifier</a>
+{% endblock %}
+
+{% block body %}
+    <div class="stack">
+        <section class="panel">
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+                <div>
+                    <div class="badge">Infrastructure</div>
+                    <p><strong>IP serveur:</strong> {{ project.serverIp ?: 'n/a' }}</p>
+                    <p><strong>Utilisateur:</strong> {{ project.serverUser ?: 'n/a' }}</p>
+                    <p><strong>Port SSH:</strong> {{ project.sshPort }}</p>
+                </div>
+                <div>
+                    <div class="badge">Collaboration</div>
+                    <p><strong>Créé par:</strong> {{ project.createdBy.displayName }}</p>
+                    <p><strong>Membres:</strong>
+                        {% for member in project.members %}
+                            {{ member.displayName }}{% if not loop.last %}, {% endif %}
+                        {% else %}
+                            aucun
+                        {% endfor %}
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h3>Secrets embarqués</h3>
+            <div class="grid">
+                <div>
+                    <div class="help">Clé SSH publique</div>
+                    <div class="secret-box">{{ plaintext.sshPublicKey ?: 'Aucune valeur' }}</div>
+                </div>
+                <div>
+                    <div class="help">Clé SSH privée</div>
+                    <div class="secret-box">{{ plaintext.sshPrivateKey ?: 'Aucune valeur' }}</div>
+                </div>
+                <div>
+                    <div class="help">Mot de passe serveur</div>
+                    <div class="secret-box">{{ plaintext.serverPassword ?: 'Aucune valeur' }}</div>
+                </div>
+                <div>
+                    <div class="help">APP_SECRET</div>
+                    <div class="secret-box">{{ plaintext.appSecret ?: 'Aucune valeur' }}</div>
+                </div>
+                <div>
+                    <div class="help">DB name</div>
+                    <div class="secret-box">{{ plaintext.dbName ?: 'Aucune valeur' }}</div>
+                </div>
+                <div>
+                    <div class="help">DB user</div>
+                    <div class="secret-box">{{ plaintext.dbUser ?: 'Aucune valeur' }}</div>
+                </div>
+                <div>
+                    <div class="help">DB password</div>
+                    <div class="secret-box">{{ plaintext.dbPassword ?: 'Aucune valeur' }}</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="content__header" style="margin-bottom: 16px;">
+                <div>
+                    <h3 style="margin: 0;">Secrets additionnels</h3>
+                    <p>Stockage complémentaire par nommage fonctionnel.</p>
+                </div>
+            </div>
+
+            {% if project.secrets is empty %}
+                <div class="empty-state">Aucun secret complémentaire.</div>
+            {% else %}
+                <div class="list">
+                    {% for secret in project.secrets %}
+                        <div class="list-item">
+                            <div class="actions" style="justify-content: space-between; align-items: flex-start;">
+                                <div>
+                                    <strong>{{ secret.name }}</strong>
+                                    <div class="help">Secret public</div>
+                                    <div class="secret-box">{{ secretPlaintexts[secret.idString].publicSecret ?: 'Aucune valeur' }}</div>
+                                    <div class="help" style="margin-top: 12px;">Secret privé</div>
+                                    <div class="secret-box">{{ secretPlaintexts[secret.idString].privateSecret ?: 'Aucune valeur' }}</div>
+                                </div>
+                                <a class="button button--ghost" href="{{ path('app_secret_edit', {id: secret.idString}) }}">Modifier</a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </section>
+    </div>
+{% endblock %}

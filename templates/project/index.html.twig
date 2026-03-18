@@ -1,0 +1,42 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Projets | Client Secrets Vault{% endblock %}
+{% block page_title %}Projets{% endblock %}
+{% block page_intro %}Chaque projet regroupe ses accès infrastructure, ses credentials applicatifs et ses secrets annexes.{% endblock %}
+{% block header_actions %}
+    <a class="button" href="{{ path('app_project_new') }}">Créer un projet</a>
+{% endblock %}
+
+{% block body %}
+    <section class="panel">
+        {% if projects is empty %}
+            <div class="empty-state">Aucun projet disponible.</div>
+        {% else %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Projet</th>
+                        <th>Client</th>
+                        <th>Domaine</th>
+                        <th>IP</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for project in projects %}
+                        <tr>
+                            <td>{{ project.name }}</td>
+                            <td>{{ project.client }}</td>
+                            <td>{{ project.domain ?: 'n/a' }}</td>
+                            <td>{{ project.serverIp ?: 'n/a' }}</td>
+                            <td class="inline-actions">
+                                <a class="button button--ghost" href="{{ path('app_project_show', {id: project.idString}) }}">Voir</a>
+                                <a class="button button--ghost" href="{{ path('app_project_edit', {id: project.idString}) }}">Modifier</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </section>
+{% endblock %}

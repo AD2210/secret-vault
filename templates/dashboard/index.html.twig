@@ -1,0 +1,60 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Tableau de bord | Client Secrets Vault{% endblock %}
+{% block page_title %}Tableau de bord{% endblock %}
+{% block page_intro %}Vue d’ensemble des projets, des secrets chiffrés et de l’état de ton accès fort.{% endblock %}
+{% block header_actions %}
+    <a class="button" href="{{ path('app_project_new') }}">Nouveau projet</a>
+{% endblock %}
+
+{% block body %}
+    <div class="stack">
+        <section class="panel panel--hero">
+            <div class="grid grid--cards">
+                <div class="metric">
+                    <span>Utilisateur</span>
+                    <strong>{{ currentUser.displayName }}</strong>
+                </div>
+                <div class="metric">
+                    <span>Projets accessibles</span>
+                    <strong>{{ projectCount }}</strong>
+                </div>
+                <div class="metric">
+                    <span>Secrets stockés</span>
+                    <strong>{{ secretCount }}</strong>
+                </div>
+                <div class="metric">
+                    <span>2FA</span>
+                    <strong>{{ currentUser.totpAuthenticationEnabled ? 'Actif' : 'À finaliser' }}</strong>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="content__header" style="margin-bottom: 16px;">
+                <div>
+                    <h3 style="margin: 0;">Derniers projets</h3>
+                    <p>Seuls les projets dont tu es membre apparaissent ici.</p>
+                </div>
+            </div>
+
+            {% if projects is empty %}
+                <div class="empty-state">Aucun projet enregistré pour l’instant.</div>
+            {% else %}
+                <div class="list">
+                    {% for project in projects|slice(0, 5) %}
+                        <div class="list-item">
+                            <div class="actions" style="justify-content: space-between;">
+                                <div>
+                                    <strong>{{ project.name }}</strong>
+                                    <div class="muted">{{ project.client }}{% if project.domain %} · {{ project.domain }}{% endif %}</div>
+                                </div>
+                                <a class="button button--ghost" href="{{ path('app_project_show', {id: project.idString}) }}">Ouvrir</a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </section>
+    </div>
+{% endblock %}

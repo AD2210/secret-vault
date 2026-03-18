@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{% block title %}Client Secrets Vault{% endblock %}</title>
+        {% block stylesheets %}{% endblock %}
+        {% block javascripts %}
+            {% block importmap %}{{ importmap('app') }}{% endblock %}
+        {% endblock %}
+    </head>
+    <body>
+        <div class="login-shell">
+            <div class="auth-card">
+                {% for message in app.flashes('success') %}
+                    <div class="flash flash--success">{{ message }}</div>
+                {% endfor %}
+                {% for message in app.flashes('error') %}
+                    <div class="flash flash--error">{{ message }}</div>
+                {% endfor %}
+
+                {% block body %}{% endblock %}
+            </div>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,32 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ title }} | Client Secrets Vault{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block page_intro %}Les champs sensibles sont chiffrés applicativement avant persistance en base.{% endblock %}
+
+{% block body %}
+    <section class="panel">
+        {{ form_start(form, {attr: {class: 'stack'}}) }}
+            <div class="form-grid">
+                <div class="field">{{ form_label(form.name) }}{{ form_widget(form.name) }}{{ form_errors(form.name) }}</div>
+                <div class="field">{{ form_label(form.client) }}{{ form_widget(form.client) }}{{ form_errors(form.client) }}</div>
+                <div class="field">{{ form_label(form.domain) }}{{ form_widget(form.domain) }}{{ form_errors(form.domain) }}</div>
+                <div class="field">{{ form_label(form.serverIp) }}{{ form_widget(form.serverIp) }}{{ form_errors(form.serverIp) }}</div>
+                <div class="field">{{ form_label(form.serverUser) }}{{ form_widget(form.serverUser) }}{{ form_errors(form.serverUser) }}</div>
+                <div class="field">{{ form_label(form.sshPort) }}{{ form_widget(form.sshPort) }}{{ form_errors(form.sshPort) }}</div>
+                <div class="field-wide">{{ form_label(form.members) }}{{ form_widget(form.members) }}{{ form_errors(form.members) }}</div>
+                <div class="field-wide">{{ form_label(form.sshPublicKey) }}{{ form_widget(form.sshPublicKey) }}{{ form_errors(form.sshPublicKey) }}</div>
+                <div class="field-wide">{{ form_label(form.sshPrivateKey) }}{{ form_widget(form.sshPrivateKey) }}{{ form_errors(form.sshPrivateKey) }}</div>
+                <div class="field-wide">{{ form_label(form.serverPassword) }}{{ form_widget(form.serverPassword) }}{{ form_errors(form.serverPassword) }}</div>
+                <div class="field-wide">{{ form_label(form.appSecret) }}{{ form_widget(form.appSecret) }}{{ form_errors(form.appSecret) }}</div>
+                <div class="field">{{ form_label(form.dbName) }}{{ form_widget(form.dbName) }}{{ form_errors(form.dbName) }}</div>
+                <div class="field">{{ form_label(form.dbUser) }}{{ form_widget(form.dbUser) }}{{ form_errors(form.dbUser) }}</div>
+                <div class="field-wide">{{ form_label(form.dbPassword) }}{{ form_widget(form.dbPassword) }}{{ form_errors(form.dbPassword) }}</div>
+            </div>
+            <div class="actions">
+                <button type="submit">Enregistrer</button>
+                <a class="button button--ghost" href="{{ path('app_project_index') }}">Retour</a>
+            </div>
+        {{ form_end(form) }}
+    </section>
+{% endblock %}

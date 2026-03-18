@@ -1,0 +1,37 @@
+{% extends 'security/auth_base.html.twig' %}
+
+{% block title %}Validation 2FA | Client Secrets Vault{% endblock %}
+
+{% block body %}
+    <span class="brand__eyebrow">Deuxième facteur</span>
+    <h1>Valider l’accès</h1>
+    <p>Saisis le code à 6 chiffres affiché par ton application d’authentification.</p>
+
+    {% if authenticationError %}
+        <div class="flash flash--error">{{ authenticationError|trans(authenticationErrorData, 'SchebTwoFactorBundle') }}</div>
+    {% endif %}
+
+    <form method="post" action="{{ checkPathUrl ? checkPathUrl : path(checkPathRoute) }}" class="stack">
+        <div class="field">
+            <label for="_auth_code">Code TOTP</label>
+            <input id="_auth_code"
+                   type="text"
+                   name="{{ authCodeParameterName }}"
+                   autocomplete="one-time-code"
+                   inputmode="numeric"
+                   pattern="[0-9]*"
+                   required
+                   autofocus>
+        </div>
+
+        {% if isCsrfProtectionEnabled %}
+            <input type="hidden" name="{{ csrfParameterName }}" value="{{ csrf_token(csrfTokenId) }}">
+        {% endif %}
+
+        <button type="submit">Déverrouiller</button>
+    </form>
+
+    <div class="actions" style="margin-top: 16px;">
+        <a class="button button--ghost" href="{{ logoutPath }}">Annuler</a>
+    </div>
+{% endblock %}
