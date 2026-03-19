@@ -36,6 +36,20 @@ La biométrie mobile ne doit pas être stockée dans l’application. Pour répo
    symfony server:start -d
    ```
 
+## Stack Docker locale
+
+Si tu veux lancer le projet comme une vraie stack applicative:
+
+```bash
+make up
+```
+
+Accès locaux:
+
+- app: `http://127.0.0.1:8090`
+- health: `http://127.0.0.1:8090/healthz`
+- PostgreSQL: `127.0.0.1:5452`
+
 ## Variables à surcharger en vrai environnement
 
 - `APP_SECRET`
@@ -43,6 +57,7 @@ La biométrie mobile ne doit pas être stockée dans l’application. Pour répo
 - `VAULT_ENCRYPTION_KEY`
 - `CHILD_APP_PROVISIONING_TOKEN`
 - `DATABASE_URL`
+- `DEFAULT_URI`
 
 `VAULT_ENCRYPTION_KEY` doit être une clé hexadécimale de 32 octets.
 
@@ -58,6 +73,20 @@ php -r "echo bin2hex(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)), PHP_EOL;"
 composer qa:phpunit
 ```
 
+## Déploiement et domaine
+
+Le projet est préparé pour être déployé sur:
+
+- `secret-vault.dsn-dev.com`
+
+Fichiers utiles:
+
+- workflow CI: [ci.yml](/home/andel/PhpstormProjects/client_secret_vault/.github/workflows/ci.yml)
+- CD beta: [cd-beta.yml](/home/andel/PhpstormProjects/client_secret_vault/.github/workflows/cd-beta.yml)
+- CD prod: [cd-prod.yml](/home/andel/PhpstormProjects/client_secret_vault/.github/workflows/cd-prod.yml)
+- config serveur exemple: [server.env.example](/home/andel/PhpstormProjects/client_secret_vault/ops/config/server.env.example)
+- runbook de déploiement: [DEPLOYMENT_RUNBOOK_V1.md](/home/andel/PhpstormProjects/client_secret_vault/docs/runbooks/DEPLOYMENT_RUNBOOK_V1.md)
+
 ## Contrat mère/app fille
 
 Endpoint attendu:
@@ -65,6 +94,7 @@ Endpoint attendu:
 - `POST /internal/provisioning/tenant-admin`
 - Auth Bearer via `CHILD_APP_PROVISIONING_TOKEN`
 - Idempotence sur le couple `tenant_uuid + user_uuid`
+- Le contrat peut aussi recevoir `child_app_key`, `child_app_name`, `tenant_slug`, `tenant_name`
 
 Exemple:
 
@@ -74,7 +104,11 @@ curl -i -X POST http://127.0.0.1:8000/internal/provisioning/tenant-admin \
   -H "Content-Type: application/json" \
   -d '{
     "contract":"tenant-admin-provisioning:v1",
+    "child_app_key":"vault",
+    "child_app_name":"Client Secrets Vault",
     "tenant_uuid":"11111111-2222-7333-8444-555555555555",
+    "tenant_slug":"acme-demo",
+    "tenant_name":"Acme Demo",
     "user_uuid":"aaaaaaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee",
     "email":"admin@example.com",
     "first_name":"Ada",

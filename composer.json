@@ -84,7 +84,11 @@
             "assets:install %PUBLIC_DIR%": "symfony-cmd",
             "importmap:install": "symfony-cmd"
         },
-        "qa:phpunit": "env -u DATABASE_URL APP_ENV=test APP_DEBUG=0 phpunit --testdox",
+        "qa:phpunit:prepare": "env -u DATABASE_URL APP_ENV=test APP_DEBUG=0 php bin/console cache:clear",
+        "qa:phpunit": [
+            "@qa:phpunit:prepare",
+            "env -u DATABASE_URL APP_ENV=test APP_DEBUG=0 phpunit --testdox"
+        ],
         "post-install-cmd": [
             "@auto-scripts"
         ],

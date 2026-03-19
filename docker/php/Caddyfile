@@ -1,0 +1,20 @@
+{
+    frankenphp
+    order php_server before file_server
+}
+
+:8080 {
+    encode zstd gzip
+    root * /app/public
+
+    handle_path /healthz {
+        respond "OK" 200
+    }
+
+    handle_path /ready {
+        respond "READY" 200
+    }
+
+    php_server
+    file_server
+}

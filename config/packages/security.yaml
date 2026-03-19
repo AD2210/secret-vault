@@ -31,6 +31,7 @@ security:
                 check_path: 2fa_login_check
 
     access_control:
+        - { path: ^/(healthz|ready)$, roles: PUBLIC_ACCESS }
         - { path: ^/internal/provisioning/tenant-admin, roles: PUBLIC_ACCESS }
         - { path: ^/login, roles: PUBLIC_ACCESS }
         - { path: ^/2fa, roles: IS_AUTHENTICATED_2FA_IN_PROGRESS }

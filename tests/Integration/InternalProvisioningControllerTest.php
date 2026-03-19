@@ -79,6 +79,22 @@ final class InternalProvisioningControllerTest extends WebTestCase
         self::assertTrue($hasher->isPasswordValid($user, 'StrongPassword123!'));
     }
 
+    public function testEndpointAcceptsExtendedChildAppMetadata(): void
+    {
+        $client = static::createClient();
+        $client->request('POST', '/internal/provisioning/tenant-admin', [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_AUTHORIZATION' => 'Bearer test-provisioning-token',
+        ], json_encode($this->validPayload([
+            'child_app_key' => 'vault',
+            'child_app_name' => 'Client Secrets Vault',
+            'tenant_slug' => 'acme-demo',
+            'tenant_name' => 'Acme Demo',
+        ]), JSON_THROW_ON_ERROR));
+
+        self::assertResponseStatusCodeSame(201);
+    }
+
     public function testEndpointIsIdempotentAndUpdatesExistingUser(): void
     {
         $client = static::createClient();
@@ -129,7 +145,11 @@ final class InternalProvisioningControllerTest extends WebTestCase
     {
         return array_merge([
             'contract' => 'tenant-admin-provisioning:v1',
+            'child_app_key' => 'vault',
+            'child_app_name' => 'Client Secrets Vault',
             'tenant_uuid' => '11111111-2222-7333-8444-555555555555',
+            'tenant_slug' => 'acme-demo',
+            'tenant_name' => 'Acme Demo',
             'user_uuid' => 'aaaaaaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee',
             'email' => 'admin@example.com',
             'first_name' => 'Ada',

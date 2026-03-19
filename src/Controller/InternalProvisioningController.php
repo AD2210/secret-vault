@@ -37,12 +37,13 @@ final class InternalProvisioningController extends AbstractController
         $tenantUuid = is_string($payload['tenant_uuid'] ?? null) ? $payload['tenant_uuid'] : null;
         $userUuid = is_string($payload['user_uuid'] ?? null) ? $payload['user_uuid'] : null;
         $contract = is_string($payload['contract'] ?? null) ? $payload['contract'] : 'tenant-admin-provisioning:v1';
+        $childAppKey = is_string($payload['child_app_key'] ?? null) ? $payload['child_app_key'] : null;
 
         if (!$this->isAuthorized($request)) {
             return $this->logAndRespond(401, 'tenant.admin.provisioning.unauthorized', [
                 'status' => 'error',
                 'message' => 'Unauthorized.',
-            ], $tenantUuid, $userUuid, $contract);
+            ], $tenantUuid, $userUuid, $contract, $childAppKey);
         }
 
         $errors = $this->validatePayload($payload);
@@ -50,7 +51,7 @@ final class InternalProvisioningController extends AbstractController
             return $this->logAndRespond(422, 'tenant.admin.provisioning.invalid_payload', [
                 'status' => 'invalid',
                 'errors' => $errors,
-            ], $tenantUuid, $userUuid, $contract);
+            ], $tenantUuid, $userUuid, $contract, $childAppKey);
         }
 
         /** @var string $tenantUuid */
@@ -72,7 +73,7 @@ final class InternalProvisioningController extends AbstractController
             return $this->logAndRespond(409, 'tenant.admin.provisioning.email_conflict', [
                 'status' => 'conflict',
                 'message' => 'Another account already uses this email.',
-            ], $tenantUuid, $userUuid, $contract);
+            ], $tenantUuid, $userUuid, $contract, $childAppKey);
         }
 
         $statusCode = 200;
@@ -97,11 +98,12 @@ final class InternalProvisioningController extends AbstractController
         return $this->logAndRespond($statusCode, 'tenant.admin.provisioning.succeeded', [
             'status' => 201 === $statusCode ? 'created' : 'updated',
             'contract' => $contract,
+            'child_app_key' => $childAppKey,
             'tenant_uuid' => $tenantUuid,
             'user_uuid' => $userUuid,
             'email' => $email,
             'user_id' => $user->getIdString(),
-        ], $tenantUuid, $userUuid, $contract);
+        ], $tenantUuid, $userUuid, $contract, $childAppKey);
     }
 
     /**
@@ -152,10 +154,27 @@ final class InternalProvisioningController extends AbstractController
                     new Assert\NotBlank(),
                     new Assert\EqualTo('tenant-admin-provisioning:v1'),
                 ],
+                'child_app_key' => new Assert\Optional([
+                    new Assert\NotBlank(),
+                    new Assert\Length(max: 64),
+                    new Assert\Regex('/^[a-z0-9-]+$/'),
+                ]),
+                'child_app_name' => new Assert\Optional([
+                    new Assert\NotBlank(),
+                    new Assert\Length(max: 160),
+                ]),
                 'tenant_uuid' => [
                     new Assert\NotBlank(),
                     new Assert\Uuid(),
                 ],
+                'tenant_slug' => new Assert\Optional([
+                    new Assert\NotBlank(),
+                    new Assert\Length(max: 80),
+                ]),
+                'tenant_name' => new Assert\Optional([
+                    new Assert\NotBlank(),
+                    new Assert\Length(max: 160),
+                ]),
                 'user_uuid' => [
                     new Assert\NotBlank(),
                     new Assert\Uuid(),
@@ -213,11 +232,13 @@ final class InternalProvisioningController extends AbstractController
         ?string $tenantUuid,
         ?string $userUuid,
         string $contract,
+        ?string $childAppKey,
     ): JsonResponse {
         $context = [
             'tenant_uuid' => $tenantUuid,
             'user_uuid' => $userUuid,
             'contract' => $contract,
+            'child_app_key' => $childAppKey,
             'status_code' => $statusCode,
             'timestamp' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
         ];
