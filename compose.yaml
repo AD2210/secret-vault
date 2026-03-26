@@ -1,39 +1,44 @@
 services:
   app:
-    build: ./docker/php
-    env_file: .env
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
     environment:
-      APP_ENV: dev
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-!ChangeMe!}@database:5432/${POSTGRES_DB:-client_secret_vault}?serverVersion=16&charset=utf8"
-      DEFAULT_URI: "${DEFAULT_URI:-http://localhost:${APP_HTTP_PORT:-8090}}"
+      APP_ENV: ${APP_ENV:-prod}
+      APP_DEBUG: ${APP_DEBUG:-0}
+      APP_SECRET: ${APP_SECRET:-change-me-for-prod}
+      APP_SHARE_DIR: ${APP_SHARE_DIR:-var/share}
+      APP_2FA_ISSUER: ${APP_2FA_ISSUER:-Client Secrets Vault}
+      VAULT_ENCRYPTION_KEY: ${VAULT_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      CHILD_APP_PROVISIONING_TOKEN: ${CHILD_APP_PROVISIONING_TOKEN:-change-this-provisioning-token}
+      SYMFONY_TRUSTED_PROXIES: ${SYMFONY_TRUSTED_PROXIES:-private_ranges}
+      DEFAULT_URI: ${DEFAULT_URI:-https://secret-vault.dsn-dev.com}
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/var/data_prod.db}
+      MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN:-doctrine://default?auto_setup=0}
+      MAILER_DSN: ${MAILER_DSN:-null://null}
     ports:
-      - "${APP_HTTP_PORT:-8090}:8080"
-    depends_on:
-      - database
+      - "${APP_HTTP_PORT:-8090}:80"
+    networks:
+      edge:
+        aliases:
+          - secret-vault-app
     volumes:
-      - ./:/app:cached
-      - symfony_var:/app/var
-
-###> doctrine/doctrine-bundle ###
-  database:
-    image: postgres:${POSTGRES_VERSION:-16}-alpine
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-client_secret_vault}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-!ChangeMe!}
-      POSTGRES_USER: ${POSTGRES_USER:-app}
+      - vault_var:/app/var
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-client_secret_vault}", "-U", "${POSTGRES_USER:-app}"]
-      timeout: 5s
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1/healthz >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
       retries: 5
-      start_period: 60s
-    ports:
-      - "${POSTGRES_PORT:-5452}:5432"
-    volumes:
-      - database_data:/var/lib/postgresql/data:rw
-###< doctrine/doctrine-bundle ###
 
 volumes:
-###> doctrine/doctrine-bundle ###
-  database_data:
-###< doctrine/doctrine-bundle ###
-  symfony_var:
+  vault_var:
+  caddy_data:
+  caddy_config:
+
+networks:
+  edge:
+    external: true
+    name: ${SHARED_EDGE_NETWORK:-saas-edge}

@@ -4,14 +4,12 @@ on:
   push:
     branches:
       - main
-      - beta
       - production
       - 'feature/**'
       - 'hotfix/**'
   pull_request:
     branches:
       - main
-      - beta
       - production
 
 jobs:

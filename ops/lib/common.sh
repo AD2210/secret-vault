@@ -62,7 +62,9 @@ load_env_file() {
         exit 1
     fi
 
+    set -a
     # shellcheck disable=SC1090
     source "${env_file}"
+    set +a
     log_info "Loaded env file: ${env_file}"
 }

@@ -20,16 +20,17 @@ else
 fi
 
 SOURCE_DIR="${1:-$(pwd)}"
-APP_BASE_DIR="${APP_BASE_DIR:-/srv/client-secret-vault}"
+APP_BASE_DIR="${APP_BASE_DIR:-/srv/secret-vault}"
 RELEASES_DIR="${RELEASES_DIR:-${APP_BASE_DIR}/releases}"
-CURRENT_LINK="${CURRENT_LINK:-${APP_BASE_DIR}/current}"
+CURRENT_LINK="${CURRENT_LINK:-${APP_BASE_DIR}/app}"
 HEALTHCHECK_URL="${HEALTHCHECK_URL:-http://127.0.0.1:8090/healthz}"
 HEALTHCHECK_ATTEMPTS="${HEALTHCHECK_ATTEMPTS:-6}"
 HEALTHCHECK_SLEEP_SECONDS="${HEALTHCHECK_SLEEP_SECONDS:-5}"
 RUN_MIGRATIONS="${RUN_MIGRATIONS:-true}"
 APP_SERVICE_NAME="${APP_SERVICE_NAME:-app}"
-DEPLOY_PROFILE="${DEPLOY_PROFILE:-beta}"
+DEPLOY_PROFILE="${DEPLOY_PROFILE:-prod}"
 DEPLOY_EXCLUDES="${DEPLOY_EXCLUDES:-.git .github tests .idea var/cache var/log .phpunit.cache identifier.sqlite var/data_dev.db var/data_test.db compose.override.yaml}"
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-secret-vault}"
 
 RELEASE_ID="$(date -u +"%Y%m%dT%H%M%SZ")"
 TARGET_RELEASE="${RELEASES_DIR}/${RELEASE_ID}"
@@ -38,8 +39,11 @@ sync_release() {
     mkdir -p "${TARGET_RELEASE}"
 
     local rsync_excludes=()
+    local deploy_excludes=()
     local entry
-    for entry in ${DEPLOY_EXCLUDES}; do
+
+    IFS=' ' read -r -a deploy_excludes <<< "${DEPLOY_EXCLUDES}"
+    for entry in "${deploy_excludes[@]}"; do
         rsync_excludes+=("--exclude=${entry}")
     done
 
@@ -55,8 +59,8 @@ switch_current_symlink() {
 
 start_stack() {
     cd "${CURRENT_LINK}"
-    log_info "Starting stack for release $(readlink -f "${CURRENT_LINK}")"
-    docker compose up -d --remove-orphans
+    log_info "Starting stack for release $(readlink -f "${CURRENT_LINK}") (project=${COMPOSE_PROJECT_NAME})"
+    COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME}" docker compose up -d --build --remove-orphans
 }
 
 run_migrations_if_needed() {
@@ -67,7 +71,7 @@ run_migrations_if_needed() {
 
     cd "${CURRENT_LINK}"
     log_info "Running doctrine migrations"
-    docker compose exec -T "${APP_SERVICE_NAME}" php bin/console doctrine:migrations:migrate --no-interaction
+    COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME}" docker compose exec -T "${APP_SERVICE_NAME}" php bin/console doctrine:migrations:migrate --no-interaction
 }
 
 wait_for_health() {
