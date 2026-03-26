@@ -83,6 +83,7 @@ Fichiers utiles:
 
 - workflow CI: [ci.yml](/home/andel/PhpstormProjects/client_secret_vault/.github/workflows/ci.yml)
 - CD prod: [cd-prod.yml](/home/andel/PhpstormProjects/client_secret_vault/.github/workflows/cd-prod.yml)
+- production server env template: `.env.prod.example` (copy to `.env` on the server deploy path)
 - config serveur exemple: [server.env.example](/home/andel/PhpstormProjects/client_secret_vault/ops/config/server.env.example)
 - runbook de déploiement: [DEPLOYMENT_RUNBOOK_V1.md](/home/andel/PhpstormProjects/client_secret_vault/docs/runbooks/DEPLOYMENT_RUNBOOK_V1.md)
 

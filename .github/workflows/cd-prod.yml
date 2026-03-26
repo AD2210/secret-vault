@@ -72,10 +72,10 @@ jobs:
       - name: Copy compose files to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.PROD_SSH_HOST }}
-          username: ${{ secrets.PROD_SSH_USER }}
-          key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
-          port: ${{ secrets.PROD_SSH_PORT }}
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: ${{ secrets.PROD_PORT }}
           source: "compose.yaml,compose.prod.yaml"
           target: "${{ secrets.PROD_PATH }}"
           overwrite: true
@@ -83,10 +83,10 @@ jobs:
       - name: Deploy to Production
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.PROD_SSH_HOST }}
-          username: ${{ secrets.PROD_SSH_USER }}
-          key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
-          port: ${{ secrets.PROD_SSH_PORT }}
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: ${{ secrets.PROD_PORT }}
           script_stop: true
           script: |
             set -euo pipefail
