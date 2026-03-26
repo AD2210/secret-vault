@@ -108,9 +108,10 @@ jobs:
 
             export IMAGES_PREFIX="ghcr.io/${GHCR_USER}/${GHCR_REPO}/"
             export IMAGE_TAG='prod'
+            export COMPOSE_PROJECT_NAME='secret-vault'
 
             if docker compose version >/dev/null 2>&1; then
-              COMPOSE_CMD="docker compose"
+              COMPOSE_CMD="docker compose -p ${COMPOSE_PROJECT_NAME}"
             else
               echo "Docker Compose v2 is required on the server (command: docker compose)." >&2
               exit 1

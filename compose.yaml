@@ -1,3 +1,5 @@
+name: secret-vault
+
 services:
   app:
     image: ${IMAGES_PREFIX:-}client-secret-vault-app:${IMAGE_TAG:-latest}
