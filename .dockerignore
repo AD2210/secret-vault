@@ -6,6 +6,9 @@ tests
 var/cache
 var/log
 vendor
+.env
+.env.*
+!.env.prod.example
 .env.local
 .env.test.local
 .phpunit.cache
