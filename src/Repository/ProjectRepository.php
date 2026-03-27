@@ -24,33 +24,27 @@ final class ProjectRepository extends ServiceEntityRepository
      */
     public function findAccessibleByUser(User $user): array
     {
-        $qb = $this->createQueryBuilder('p')
-            ->distinct()
-            ->orderBy('p.updatedAt', 'DESC');
+        $projects = $this->createQueryBuilder('p')
+            ->leftJoin('p.members', 'm')
+            ->addSelect('m')
+            ->addSelect('creator')
+            ->leftJoin('p.createdBy', 'creator')
+            ->orderBy('p.updatedAt', 'DESC')
+            ->getQuery()
+            ->getResult();
 
-        if (!$user->isAdmin()) {
-            $qb
-                ->leftJoin('p.members', 'm')
-                ->addSelect('m')
-                ->andWhere(':user MEMBER OF p.members OR p.createdBy = :user')
-                ->setParameter('user', $user);
+        if ($user->isAdmin()) {
+            return $projects;
         }
 
-        return $qb->getQuery()->getResult();
+        return array_values(array_filter(
+            $projects,
+            static fn (Project $project): bool => $project->getCreatedBy()->getId()->equals($user->getId()) || $project->hasMember($user),
+        ));
     }
 
     public function countAccessibleByUser(User $user): int
     {
-        $qb = $this->createQueryBuilder('p')
-            ->select('COUNT(DISTINCT p.id)');
-
-        if (!$user->isAdmin()) {
-            $qb
-                ->leftJoin('p.members', 'm')
-                ->andWhere(':user MEMBER OF p.members OR p.createdBy = :user')
-                ->setParameter('user', $user);
-        }
-
-        return (int) $qb->getQuery()->getSingleScalarResult();
+        return count($this->findAccessibleByUser($user));
     }
 }
