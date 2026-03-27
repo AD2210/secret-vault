@@ -15,6 +15,7 @@
                 <div class="field">{{ form_label(form.serverUser) }}{{ form_widget(form.serverUser) }}{{ form_errors(form.serverUser) }}</div>
                 <div class="field">{{ form_label(form.sshPort) }}{{ form_widget(form.sshPort) }}{{ form_errors(form.sshPort) }}</div>
                 <div class="field-wide">{{ form_label(form.members) }}{{ form_widget(form.members) }}{{ form_errors(form.members) }}</div>
+                <div class="field-wide">{{ form_label(form.inviteEmail) }}{{ form_widget(form.inviteEmail) }}{{ form_help(form.inviteEmail) }}{{ form_errors(form.inviteEmail) }}</div>
                 <div class="field-wide">{{ form_label(form.sshPublicKey) }}{{ form_widget(form.sshPublicKey) }}{{ form_errors(form.sshPublicKey) }}</div>
                 <div class="field-wide">{{ form_label(form.sshPrivateKey) }}{{ form_widget(form.sshPrivateKey) }}{{ form_errors(form.sshPrivateKey) }}</div>
                 <div class="field-wide">{{ form_label(form.serverPassword) }}{{ form_widget(form.serverPassword) }}{{ form_errors(form.serverPassword) }}</div>
@@ -29,4 +30,53 @@
             </div>
         {{ form_end(form) }}
     </section>
+
+    {% if app.request.attributes.get('_route') == 'app_project_edit' %}
+        <section class="panel">
+            <h3>Danger zone</h3>
+            <form method="post" action="{{ path('app_project_delete', {id: project.idString}) }}" onsubmit="return confirm('Supprimer définitivement ce projet ?');">
+                <input type="hidden" name="_token" value="{{ csrf_token('delete-project-' ~ project.idString) }}">
+                <button class="button button--ghost" type="submit">Supprimer ce projet</button>
+            </form>
+        </section>
+    {% endif %}
+
+    {% if pendingInvitations is defined and pendingInvitations is not empty %}
+        <section class="panel">
+            <h3>Invitations d’accès</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Statut</th>
+                        <th>Expire le</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for invitation in pendingInvitations %}
+                        <tr>
+                            <td>{{ invitation.email }}</td>
+                            <td>{{ invitation.statusLabel }}</td>
+                            <td>{{ invitation.expiresAt|date('d/m/Y H:i') }}</td>
+                            <td class="inline-actions">
+                                {% if not invitation.approved and invitation.recipientConfirmedAt and (app.user and (app.user.idString == project.createdBy.idString or is_granted('ROLE_ADMIN'))) %}
+                                    <form method="post" action="{{ path('app_project_invitation_approve', {id: project.idString, invitation: invitation.idString}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('approve-invitation-' ~ invitation.idString) }}">
+                                        <button class="button button--ghost" type="submit">Valider</button>
+                                    </form>
+                                {% endif %}
+                                {% if not invitation.revokedAt and not invitation.acceptedAt and (app.user and (app.user.idString == project.createdBy.idString or is_granted('ROLE_ADMIN'))) %}
+                                    <form method="post" action="{{ path('app_project_invitation_revoke', {id: project.idString, invitation: invitation.idString}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('revoke-invitation-' ~ invitation.idString) }}">
+                                        <button class="button button--ghost" type="submit">Révoquer</button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    {% endif %}
 {% endblock %}

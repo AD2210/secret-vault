@@ -8,6 +8,7 @@ use App\Entity\Project;
 use App\Entity\User;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -49,6 +50,14 @@ final class ProjectType extends AbstractType
                 'multiple' => true,
                 'expanded' => false,
                 'required' => false,
+                'by_reference' => false,
+            ])
+            ->add('inviteEmail', EmailType::class, [
+                'label' => 'Inviter par email',
+                'mapped' => false,
+                'required' => false,
+                'empty_data' => '',
+                'help' => 'Si la personne n’a pas encore de compte, elle recevra un lien d’inscription puis devra attendre votre validation.',
             ])
             ->add('sshPublicKey', TextareaType::class, [
                 'label' => 'Clé SSH publique',

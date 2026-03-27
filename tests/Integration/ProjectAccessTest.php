@@ -42,7 +42,9 @@ final class ProjectAccessTest extends WebTestCase
 
         $user = (new User('owner@example.com', 'Owner', 'User'))
             ->setRoles(['ROLE_USER'])
-            ->setPassword('$2y$13$dummyhashdummyhashdummyhashdummyhashdummyhashdummyhash');
+            ->setPassword('$2y$13$dummyhashdummyhashdummyhashdummyhashdummyhashdummyhash')
+            ->prepareTotp('JBSWY3DPEHPK3PXP')
+            ->enableTotp();
 
         $project = (new Project('Project Alpha', 'Client One'))
             ->setCreatedBy($user);

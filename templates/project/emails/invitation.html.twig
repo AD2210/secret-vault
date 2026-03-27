@@ -1,0 +1,9 @@
+<p>Bonjour,</p>
+
+<p>{{ invitation.invitedBy.displayName }} vous invite à rejoindre le projet <strong>{{ invitation.project.name }}</strong> sur Client Secrets Vault.</p>
+
+<p>
+    <a href="{{ acceptUrl }}">Accepter l’invitation</a>
+</p>
+
+<p>Le lien expire le {{ invitation.expiresAt|date('d/m/Y H:i') }}.</p>

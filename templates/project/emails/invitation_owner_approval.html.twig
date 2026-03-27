@@ -1,0 +1,9 @@
+<p>Bonjour {{ invitation.invitedBy.displayName }},</p>
+
+<p>L’invité <strong>{{ invitation.email }}</strong> a confirmé son identité pour rejoindre le projet <strong>{{ invitation.project.name }}</strong>.</p>
+
+<p>Vous pouvez maintenant valider ou révoquer son accès depuis la fiche projet :</p>
+
+<p>
+    <a href="{{ projectEditUrl }}">Ouvrir le projet</a>
+</p>

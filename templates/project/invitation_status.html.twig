@@ -1,0 +1,25 @@
+{% extends 'security/auth_base.html.twig' %}
+
+{% block title %}Invitation projet | Client Secrets Vault{% endblock %}
+
+{% block body %}
+    <span class="brand__eyebrow">Invitation projet</span>
+    <h1>{{ invitation.project.name }}</h1>
+
+    {% if state == 'accepted' %}
+        <p>Votre accès au projet est actif. Vous pouvez maintenant vous connecter au coffre.</p>
+    {% elseif state == 'pending_owner' %}
+        <p>Votre demande a bien été enregistrée. Le propriétaire du projet doit encore la valider avant de vous donner accès.</p>
+    {% elseif state == 'login_required' %}
+        <p>Un compte existe déjà pour <strong>{{ invitation.email }}</strong>. Connectez-vous avec ce compte puis rouvrez ce lien pour confirmer votre accès.</p>
+        <a class="button" href="{{ path('app_login', {email: invitation.email}) }}">Se connecter</a>
+    {% elseif state == 'wrong_user' %}
+        <p>Vous êtes connecté avec un autre compte. Utilisez l’adresse <strong>{{ invitation.email }}</strong> pour accepter cette invitation.</p>
+    {% elseif state == 'revoked' %}
+        <p>Cette invitation a été révoquée.</p>
+    {% elseif state == 'expired' %}
+        <p>Cette invitation a expiré. Demandez une nouvelle invitation au propriétaire du projet.</p>
+    {% else %}
+        <p>Cette invitation n’est plus utilisable.</p>
+    {% endif %}
+{% endblock %}

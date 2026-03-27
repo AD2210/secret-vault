@@ -74,6 +74,12 @@ class Project
     #[ORM\OneToMany(mappedBy: 'project', targetEntity: Secret::class, orphanRemoval: true, cascade: ['persist'])]
     private Collection $secrets;
 
+    /**
+     * @var Collection<int, ProjectAccessInvitation>
+     */
+    #[ORM\OneToMany(mappedBy: 'project', targetEntity: ProjectAccessInvitation::class, orphanRemoval: true, cascade: ['persist'])]
+    private Collection $accessInvitations;
+
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
 
@@ -87,6 +93,7 @@ class Project
         $this->client = trim($client);
         $this->members = new ArrayCollection();
         $this->secrets = new ArrayCollection();
+        $this->accessInvitations = new ArrayCollection();
         $this->createdAt = new \DateTimeImmutable();
         $this->updatedAt = new \DateTimeImmutable();
     }
@@ -309,6 +316,23 @@ class Project
     public function getSecrets(): Collection
     {
         return $this->secrets;
+    }
+
+    /**
+     * @return Collection<int, ProjectAccessInvitation>
+     */
+    public function getAccessInvitations(): Collection
+    {
+        return $this->accessInvitations;
+    }
+
+    public function addAccessInvitation(ProjectAccessInvitation $invitation): static
+    {
+        if (!$this->accessInvitations->contains($invitation)) {
+            $this->accessInvitations->add($invitation);
+        }
+
+        return $this;
     }
 
     public function addSecret(Secret $secret): static
