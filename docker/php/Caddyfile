@@ -1,4 +1,5 @@
 {
+    auto_https off
     frankenphp
     order php_server before file_server
 }
