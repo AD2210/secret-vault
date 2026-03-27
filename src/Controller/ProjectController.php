@@ -30,8 +30,10 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[Route('/projects')]
 final class ProjectController extends AbstractController
 {
-    public function __construct(private readonly VaultCipher $cipher)
-    {
+    public function __construct(
+        private readonly VaultCipher $cipher,
+        private readonly MailerInterface $mailer,
+    ) {
     }
 
     #[Route('/invitation/{token}', name: 'app_project_invitation_accept', methods: ['GET', 'POST'])]
@@ -42,7 +44,6 @@ final class ProjectController extends AbstractController
         UserRepository $users,
         UserPasswordHasherInterface $hasher,
         EntityManagerInterface $em,
-        MailerInterface $mailer,
     ): Response {
         $invitation = $invitations->findOneByPlainToken($token);
         if (!$invitation instanceof ProjectAccessInvitation) {
@@ -93,7 +94,7 @@ final class ProjectController extends AbstractController
             $em->flush();
 
             if ($justConfirmed && !$invitation->isApproved()) {
-                $this->sendInvitationApprovalRequest($mailer, $invitation);
+                $this->sendInvitationApprovalRequest($invitation);
             }
 
             return $this->render('project/invitation_status.html.twig', [
@@ -131,7 +132,7 @@ final class ProjectController extends AbstractController
             $em->flush();
 
             if (!$invitation->isApproved()) {
-                $this->sendInvitationApprovalRequest($mailer, $invitation);
+                $this->sendInvitationApprovalRequest($invitation);
             }
 
             return $this->render('project/invitation_status.html.twig', [
@@ -157,7 +158,7 @@ final class ProjectController extends AbstractController
 
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
     #[Route('/new', name: 'app_project_new', methods: ['GET', 'POST'])]
-    public function new(Request $request, EntityManagerInterface $em, MailerInterface $mailer): Response
+    public function new(Request $request, EntityManagerInterface $em): Response
     {
         $project = new Project();
         $form = $this->createForm(ProjectType::class, $project, [
@@ -170,7 +171,7 @@ final class ProjectController extends AbstractController
             $project->setCreatedBy($user);
             $project->addMember($user);
             $this->hydrateEncryptedFields($project, $form);
-            $this->handleInviteEmail($form, $project, $user, $mailer, $em);
+            $this->handleInviteEmail($form, $project, $user, $em);
 
             $em->persist($project);
             $em->flush();
@@ -202,7 +203,7 @@ final class ProjectController extends AbstractController
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
     #[Route('/{id}/edit', name: 'app_project_edit', methods: ['GET', 'POST'])]
     #[IsGranted(ProjectVoter::EDIT, subject: 'project')]
-    public function edit(Request $request, Project $project, EntityManagerInterface $em, MailerInterface $mailer): Response
+    public function edit(Request $request, Project $project, EntityManagerInterface $em): Response
     {
         $form = $this->createForm(ProjectType::class, $project, [
             'plaintext_defaults' => $this->decryptProject($project),
@@ -213,7 +214,7 @@ final class ProjectController extends AbstractController
             $project->addMember($project->getCreatedBy());
             $project->addMember($this->getCurrentUser());
             $this->hydrateEncryptedFields($project, $form);
-            $this->handleInviteEmail($form, $project, $this->getCurrentUser(), $mailer, $em);
+            $this->handleInviteEmail($form, $project, $this->getCurrentUser(), $em);
             $em->flush();
 
             $this->addFlash('success', 'Projet mis à jour.');
@@ -352,7 +353,7 @@ final class ProjectController extends AbstractController
         return $user;
     }
 
-    private function handleInviteEmail(FormInterface $form, Project $project, User $actor, MailerInterface $mailer, EntityManagerInterface $em): void
+    private function handleInviteEmail(FormInterface $form, Project $project, User $actor, EntityManagerInterface $em): void
     {
         $inviteEmail = mb_strtolower(trim((string) $form->get('inviteEmail')->getData()));
         if ('' === $inviteEmail) {
@@ -393,13 +394,13 @@ final class ProjectController extends AbstractController
 
         $project->addAccessInvitation($invitation);
         $em->persist($invitation);
-        $this->sendInvitationEmail($mailer, $invitation, $plainToken);
+        $this->sendInvitationEmail($invitation, $plainToken);
         $this->addFlash('success', 'Invitation envoyée.');
     }
 
-    private function sendInvitationEmail(MailerInterface $mailer, ProjectAccessInvitation $invitation, string $plainToken): void
+    private function sendInvitationEmail(ProjectAccessInvitation $invitation, string $plainToken): void
     {
-        $mailer->send((new TemplatedEmail())
+        $this->mailer->send((new TemplatedEmail())
             ->to(new Address($invitation->getEmail()))
             ->subject(sprintf('Invitation au projet "%s"', $invitation->getProject()->getName()))
             ->htmlTemplate('project/emails/invitation.html.twig')
@@ -411,9 +412,9 @@ final class ProjectController extends AbstractController
             ]));
     }
 
-    private function sendInvitationApprovalRequest(MailerInterface $mailer, ProjectAccessInvitation $invitation): void
+    private function sendInvitationApprovalRequest(ProjectAccessInvitation $invitation): void
     {
-        $mailer->send((new TemplatedEmail())
+        $this->mailer->send((new TemplatedEmail())
             ->to(new Address($invitation->getInvitedBy()->getEmail(), $invitation->getInvitedBy()->getDisplayName()))
             ->subject(sprintf('Validation requise pour "%s"', $invitation->getProject()->getName()))
             ->htmlTemplate('project/emails/invitation_owner_approval.html.twig')
