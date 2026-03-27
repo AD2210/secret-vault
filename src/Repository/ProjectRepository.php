@@ -25,13 +25,14 @@ final class ProjectRepository extends ServiceEntityRepository
     public function findAccessibleByUser(User $user): array
     {
         $qb = $this->createQueryBuilder('p')
-            ->leftJoin('p.members', 'm')
-            ->addSelect('m')
+            ->distinct()
             ->orderBy('p.updatedAt', 'DESC');
 
         if (!$user->isAdmin()) {
             $qb
-                ->andWhere('m = :user OR p.createdBy = :user')
+                ->leftJoin('p.members', 'm')
+                ->addSelect('m')
+                ->andWhere(':user MEMBER OF p.members OR p.createdBy = :user')
                 ->setParameter('user', $user);
         }
 
@@ -46,7 +47,7 @@ final class ProjectRepository extends ServiceEntityRepository
         if (!$user->isAdmin()) {
             $qb
                 ->leftJoin('p.members', 'm')
-                ->andWhere('m = :user OR p.createdBy = :user')
+                ->andWhere(':user MEMBER OF p.members OR p.createdBy = :user')
                 ->setParameter('user', $user);
         }
 
