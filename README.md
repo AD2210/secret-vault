@@ -36,6 +36,12 @@ La biométrie mobile ne doit pas être stockée dans l’application. Pour répo
    symfony server:start -d
    ```
 
+Routes métier tenantées:
+
+- login: `/t/{tenantSlug}/login`
+- dashboard: `/t/{tenantSlug}`
+- projets: `/t/{tenantSlug}/projects`
+
 ## Stack Docker locale
 
 Si tu veux lancer le projet comme une vraie stack applicative:
@@ -60,6 +66,11 @@ Accès locaux:
 - `DEFAULT_URI`
 
 `VAULT_ENCRYPTION_KEY` doit être une clé hexadécimale de 32 octets.
+
+`DATABASE_URL` sert uniquement de connexion Doctrine de bootstrap.
+Les données métier sont ensuite lues et écrites dans des bases SQLite tenantées:
+
+- `var/tenants/{tenantSlug}.sqlite`
 
 Exemple de génération:
 
@@ -119,3 +130,17 @@ curl -i -X POST http://127.0.0.1:8000/internal/provisioning/tenant-admin \
     "password":"StrongPassword123!"
   }'
 ```
+
+## Tenant DB runtime
+
+Le coffre ne doit plus être exploité comme une base métier globale.
+
+Le runtime actuel est:
+
+- résolution du tenant via `/t/{tenantSlug}`
+- bascule Doctrine vers `var/tenants/{tenantSlug}.sqlite`
+- création et migration de cette base lors du provisioning interne
+
+Référence d’architecture:
+
+- [TENANT_DATABASE_REFACTOR.md](/home/andel/PhpstormProjects/client_secret_vault/docs/TENANT_DATABASE_REFACTOR.md)

@@ -33,10 +33,11 @@ security:
     access_control:
         - { path: ^/(healthz|ready)$, roles: PUBLIC_ACCESS }
         - { path: ^/internal/provisioning/tenant-admin, roles: PUBLIC_ACCESS }
-        - { path: ^/projects/invitation/, roles: PUBLIC_ACCESS }
-        - { path: ^/login, roles: PUBLIC_ACCESS }
-        - { path: ^/2fa, roles: IS_AUTHENTICATED_2FA_IN_PROGRESS }
-        - { path: ^/logout, roles: PUBLIC_ACCESS }
+        - { path: ^/t/[^/]+/projects/invitation/, roles: PUBLIC_ACCESS }
+        - { path: ^/t/[^/]+/login, roles: PUBLIC_ACCESS }
+        - { path: ^/t/[^/]+/2fa, roles: IS_AUTHENTICATED_2FA_IN_PROGRESS }
+        - { path: ^/t/[^/]+/security/2fa/setup, roles: ROLE_USER }
+        - { path: ^/t/[^/]+/logout, roles: PUBLIC_ACCESS }
         - { path: ^/, roles: IS_AUTHENTICATED_FULLY }
 
 when@test:

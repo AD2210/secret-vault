@@ -18,7 +18,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/projects')]
+#[Route('/t/{tenantSlug}/projects')]
 #[IsGranted('IS_AUTHENTICATED_FULLY')]
 final class SecretController extends AbstractController
 {

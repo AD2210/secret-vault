@@ -6,6 +6,7 @@ namespace App\Tests\Integration;
 
 use App\Entity\User;
 use App\Repository\UserRepository;
+use App\Tenancy\TenantDatabaseSwitcher;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -13,6 +14,8 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 final class InternalProvisioningControllerTest extends WebTestCase
 {
+    private const TENANT_SLUG = 'acme-demo';
+
     protected function setUp(): void
     {
         self::ensureKernelShutdown();
@@ -25,6 +28,12 @@ final class InternalProvisioningControllerTest extends WebTestCase
         $classes = $em->getMetadataFactory()->getAllMetadata();
         $tool->dropSchema($classes);
         $tool->createSchema($classes);
+
+        $tenantDatabasePath = sprintf('%s/var/tenants/%s.sqlite', $container->getParameter('kernel.project_dir'), self::TENANT_SLUG);
+        if (is_file($tenantDatabasePath)) {
+            unlink($tenantDatabasePath);
+        }
+
         self::ensureKernelShutdown();
     }
 
@@ -63,6 +72,7 @@ final class InternalProvisioningControllerTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(201);
 
+        $this->switchToTenantDatabase();
         /** @var UserRepository $users */
         $users = static::getContainer()->get(UserRepository::class);
         $user = $users->findOneByProvisioningIdentity(
@@ -118,6 +128,7 @@ final class InternalProvisioningControllerTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(200);
 
+        $this->switchToTenantDatabase();
         /** @var UserRepository $users */
         $users = static::getContainer()->get(UserRepository::class);
         $user = $users->findOneByProvisioningIdentity(
@@ -148,7 +159,7 @@ final class InternalProvisioningControllerTest extends WebTestCase
             'child_app_key' => 'vault',
             'child_app_name' => 'Client Secrets Vault',
             'tenant_uuid' => '11111111-2222-7333-8444-555555555555',
-            'tenant_slug' => 'acme-demo',
+            'tenant_slug' => self::TENANT_SLUG,
             'tenant_name' => 'Acme Demo',
             'user_uuid' => 'aaaaaaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee',
             'email' => 'admin@example.com',
@@ -159,5 +170,12 @@ final class InternalProvisioningControllerTest extends WebTestCase
             'updated_at' => '2026-03-13T20:00:00+00:00',
             'password' => 'StrongPassword123!',
         ], $overrides);
+    }
+
+    private function switchToTenantDatabase(): void
+    {
+        /** @var TenantDatabaseSwitcher $switcher */
+        $switcher = static::getContainer()->get(TenantDatabaseSwitcher::class);
+        $switcher->switchToTenant(self::TENANT_SLUG);
     }
 }

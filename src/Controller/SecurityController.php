@@ -12,7 +12,7 @@ use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 
 final class SecurityController extends AbstractController
 {
-    #[Route('/login', name: 'app_login', methods: ['GET', 'POST'])]
+    #[Route('/t/{tenantSlug}/login', name: 'app_login', methods: ['GET', 'POST'])]
     public function login(Request $request, AuthenticationUtils $authenticationUtils): Response
     {
         if (null !== $this->getUser()) {
@@ -33,7 +33,7 @@ final class SecurityController extends AbstractController
         ]);
     }
 
-    #[Route('/logout', name: 'app_logout', methods: ['GET'])]
+    #[Route('/t/{tenantSlug}/logout', name: 'app_logout', methods: ['GET'])]
     public function logout(): never
     {
         throw new \LogicException('This method is intercepted by the firewall logout handler.');

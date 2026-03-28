@@ -12,10 +12,11 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
+#[Route('/t/{tenantSlug}')]
 #[IsGranted('IS_AUTHENTICATED_FULLY')]
 final class DashboardController extends AbstractController
 {
-    #[Route('/', name: 'app_dashboard', methods: ['GET'])]
+    #[Route('', name: 'app_dashboard', methods: ['GET'])]
     public function __invoke(ProjectRepository $projects, SecretRepository $secrets): Response
     {
         $user = $this->getCurrentUser();

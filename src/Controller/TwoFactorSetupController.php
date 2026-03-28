@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/security/2fa/setup')]
+#[Route('/t/{tenantSlug}/security/2fa/setup')]
 #[IsGranted('ROLE_USER')]
 final class TwoFactorSetupController extends AbstractController
 {

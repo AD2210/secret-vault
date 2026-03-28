@@ -15,7 +15,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/team')]
+#[Route('/t/{tenantSlug}/team')]
 #[IsGranted('ROLE_ADMIN')]
 final class TeamController extends AbstractController
 {

@@ -6,6 +6,8 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Repository\UserRepository;
+use App\Tenancy\TenantContext;
+use App\Tenancy\TenantDatabaseManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -27,6 +29,8 @@ final class InternalProvisioningController extends AbstractController
         private readonly EntityManagerInterface $em,
         private readonly ValidatorInterface $validator,
         private readonly LoggerInterface $logger,
+        private readonly TenantContext $tenantContext,
+        private readonly TenantDatabaseManager $tenantDatabaseManager,
     ) {
     }
 
@@ -61,11 +65,16 @@ final class InternalProvisioningController extends AbstractController
         /** @var string $lastName */
         /** @var string $status */
         /** @var string $password */
+        /** @var string $tenantSlug */
+        $tenantSlug = (string) $payload['tenant_slug'];
         $email = mb_strtolower(trim((string) $payload['email']));
         $firstName = trim((string) $payload['first_name']);
         $lastName = trim((string) $payload['last_name']);
         $status = (string) $payload['status'];
         $password = (string) $payload['password'];
+
+        $this->tenantContext->setTenantSlug($tenantSlug);
+        $databasePath = $this->tenantDatabaseManager->ensureTenantDatabase($tenantSlug);
 
         $user = $this->users->findOneByProvisioningIdentity($tenantUuid, $userUuid);
         $emailOwner = $this->users->findOneBy(['email' => $email]);
@@ -100,9 +109,11 @@ final class InternalProvisioningController extends AbstractController
             'contract' => $contract,
             'child_app_key' => $childAppKey,
             'tenant_uuid' => $tenantUuid,
+            'tenant_slug' => $tenantSlug,
             'user_uuid' => $userUuid,
             'email' => $email,
             'user_id' => $user->getIdString(),
+            'database_path' => $databasePath,
         ], $tenantUuid, $userUuid, $contract, $childAppKey);
     }
 

@@ -41,42 +41,48 @@
         </section>
     {% endif %}
 
-    {% if pendingInvitations is defined and pendingInvitations is not empty %}
+    {% if app.request.attributes.get('_route') == 'app_project_edit' %}
         <section class="panel">
-            <h3>Invitations d’accès</h3>
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Email</th>
-                        <th>Statut</th>
-                        <th>Expire le</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for invitation in pendingInvitations %}
+            <h3>Accès au projet</h3>
+            <p class="muted">Les membres déjà inscrits se gèrent dans le champ “Membres autorisés”. Pour un nouvel accès, utilise “Inviter par email”, puis valide la demande ici après confirmation du destinataire.</p>
+
+            {% if pendingInvitations is defined and pendingInvitations is not empty %}
+                <table class="table">
+                    <thead>
                         <tr>
-                            <td>{{ invitation.email }}</td>
-                            <td>{{ invitation.statusLabel }}</td>
-                            <td>{{ invitation.expiresAt|date('d/m/Y H:i') }}</td>
-                            <td class="inline-actions">
-                                {% if not invitation.approved and invitation.recipientConfirmedAt and (app.user and (app.user.idString == project.createdBy.idString or is_granted('ROLE_ADMIN'))) %}
-                                    <form method="post" action="{{ path('app_project_invitation_approve', {id: project.idString, invitation: invitation.idString}) }}">
-                                        <input type="hidden" name="_token" value="{{ csrf_token('approve-invitation-' ~ invitation.idString) }}">
-                                        <button class="button button--ghost" type="submit">Valider</button>
-                                    </form>
-                                {% endif %}
-                                {% if not invitation.revokedAt and not invitation.acceptedAt and (app.user and (app.user.idString == project.createdBy.idString or is_granted('ROLE_ADMIN'))) %}
-                                    <form method="post" action="{{ path('app_project_invitation_revoke', {id: project.idString, invitation: invitation.idString}) }}">
-                                        <input type="hidden" name="_token" value="{{ csrf_token('revoke-invitation-' ~ invitation.idString) }}">
-                                        <button class="button button--ghost" type="submit">Révoquer</button>
-                                    </form>
-                                {% endif %}
-                            </td>
+                            <th>Email</th>
+                            <th>Statut</th>
+                            <th>Expire le</th>
+                            <th>Actions</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {% for invitation in pendingInvitations %}
+                            <tr>
+                                <td>{{ invitation.email }}</td>
+                                <td>{{ invitation.statusLabel }}</td>
+                                <td>{{ invitation.expiresAt|date('d/m/Y H:i') }}</td>
+                                <td class="inline-actions">
+                                    {% if not invitation.approved and invitation.recipientConfirmedAt and (app.user and (app.user.idString == project.createdBy.idString or is_granted('ROLE_ADMIN'))) %}
+                                        <form method="post" action="{{ path('app_project_invitation_approve', {id: project.idString, invitation: invitation.idString}) }}">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('approve-invitation-' ~ invitation.idString) }}">
+                                            <button class="button button--ghost" type="submit">Valider</button>
+                                        </form>
+                                    {% endif %}
+                                    {% if not invitation.revokedAt and not invitation.acceptedAt and (app.user and (app.user.idString == project.createdBy.idString or is_granted('ROLE_ADMIN'))) %}
+                                        <form method="post" action="{{ path('app_project_invitation_revoke', {id: project.idString, invitation: invitation.idString}) }}">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('revoke-invitation-' ~ invitation.idString) }}">
+                                            <button class="button button--ghost" type="submit">Révoquer</button>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-state">Aucune invitation en attente pour ce projet.</div>
+            {% endif %}
         </section>
     {% endif %}
 {% endblock %}

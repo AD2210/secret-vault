@@ -54,4 +54,35 @@ final class UserRepository extends ServiceEntityRepository implements PasswordUp
             ->getQuery()
             ->getOneOrNullResult();
     }
+
+    /**
+     * @return list<User>
+     */
+    public function findAssignableByTenant(?string $tenantUuid): array
+    {
+        $qb = $this->createQueryBuilder('u')
+            ->orderBy('u.lastName', 'ASC')
+            ->addOrderBy('u.firstName', 'ASC');
+
+        if (null !== $tenantUuid && '' !== $tenantUuid) {
+            $qb->andWhere('u.externalTenantUuid = :tenantUuid')
+                ->setParameter('tenantUuid', $tenantUuid);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    public function findOneByEmailInTenant(string $email, ?string $tenantUuid): ?User
+    {
+        $qb = $this->createQueryBuilder('u')
+            ->andWhere('u.email = :email')
+            ->setParameter('email', mb_strtolower(trim($email)));
+
+        if (null !== $tenantUuid && '' !== $tenantUuid) {
+            $qb->andWhere('u.externalTenantUuid = :tenantUuid')
+                ->setParameter('tenantUuid', $tenantUuid);
+        }
+
+        return $qb->getQuery()->getOneOrNullResult();
+    }
 }

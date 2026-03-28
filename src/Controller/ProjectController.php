@@ -27,7 +27,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/projects')]
+#[Route('/t/{tenantSlug}/projects')]
 final class ProjectController extends AbstractController
 {
     public function __construct(
@@ -71,7 +71,7 @@ final class ProjectController extends AbstractController
             ]);
         }
 
-        $existingUser = $users->findOneBy(['email' => $invitation->getEmail()]);
+        $existingUser = $users->findOneByEmailInTenant($invitation->getEmail(), $this->getTenantUuidForInvitation($invitation));
         $currentUser = $this->getUser();
 
         if ($currentUser instanceof User) {
@@ -163,6 +163,7 @@ final class ProjectController extends AbstractController
         $project = new Project();
         $form = $this->createForm(ProjectType::class, $project, [
             'plaintext_defaults' => [],
+            'tenant_uuid' => $this->getCurrentTenantUuid(),
         ]);
         $form->handleRequest($request);
 
@@ -207,6 +208,7 @@ final class ProjectController extends AbstractController
     {
         $form = $this->createForm(ProjectType::class, $project, [
             'plaintext_defaults' => $this->decryptProject($project),
+            'tenant_uuid' => $this->getCurrentTenantUuid(),
         ]);
         $form->handleRequest($request);
 
@@ -387,7 +389,7 @@ final class ProjectController extends AbstractController
 
         /** @var UserRepository $users */
         $users = $em->getRepository(User::class);
-        $existingUser = $users->findOneBy(['email' => $inviteEmail]);
+        $existingUser = $users->findOneByEmailInTenant($inviteEmail, $this->getTenantUuidForProject($project));
         if ($existingUser instanceof User) {
             $invitation->setInviteeUser($existingUser);
         }
@@ -443,5 +445,20 @@ final class ProjectController extends AbstractController
         }
 
         throw $this->createNotFoundException();
+    }
+
+    private function getCurrentTenantUuid(): ?string
+    {
+        return $this->getCurrentUser()->getExternalTenantUuid();
+    }
+
+    private function getTenantUuidForProject(Project $project): ?string
+    {
+        return $project->getCreatedBy()->getExternalTenantUuid();
+    }
+
+    private function getTenantUuidForInvitation(ProjectAccessInvitation $invitation): ?string
+    {
+        return $this->getTenantUuidForProject($invitation->getProject());
     }
 }
