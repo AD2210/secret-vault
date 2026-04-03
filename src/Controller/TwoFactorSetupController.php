@@ -16,7 +16,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/t/{tenantSlug}/security/2fa/setup')]
 #[IsGranted('ROLE_USER')]
 final class TwoFactorSetupController extends AbstractController
 {
@@ -27,7 +26,7 @@ final class TwoFactorSetupController extends AbstractController
     ) {
     }
 
-    #[Route('', name: 'app_2fa_setup', methods: ['GET', 'POST'])]
+    #[Route('/security/2fa/setup', name: 'app_2fa_setup', methods: ['GET', 'POST'])]
     public function __invoke(Request $request, EntityManagerInterface $em): Response
     {
         $user = $this->getCurrentUser();

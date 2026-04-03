@@ -36,10 +36,13 @@ La biométrie mobile ne doit pas être stockée dans l’application. Pour répo
    symfony server:start -d
    ```
 
-Routes métier tenantées:
+Routes d'entrée tenantées:
 
-- login: `/t/{tenantSlug}/login`
-- dashboard: `/t/{tenantSlug}`
+- login: `https://{tenantSlug}.<vault-host>/login`
+- dashboard: `https://{tenantSlug}.<vault-host>/`
+
+Routes métier encore préfixées:
+
 - projets: `/t/{tenantSlug}/projects`
 
 ## Stack Docker locale
@@ -137,9 +140,10 @@ Le coffre ne doit plus être exploité comme une base métier globale.
 
 Le runtime actuel est:
 
-- résolution du tenant via `/t/{tenantSlug}`
+- point d'entrée d'authentification sur le sous-domaine tenant: `https://{tenantSlug}.<vault-host>/login`
+- résolution du tenant via le sous-domaine, avec conservation de `/t/{tenantSlug}` uniquement pour les routes métier actuelles
 - bascule Doctrine vers `var/tenants/{tenantSlug}.sqlite`
-- création et migration de cette base lors du provisioning interne
+- création et migration de cette base au premier login réussi
 
 Référence d’architecture:
 

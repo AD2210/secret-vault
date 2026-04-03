@@ -4,87 +4,62 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
-use App\Entity\User;
-use App\Repository\UserRepository;
 use App\Tenancy\TenantDatabaseSwitcher;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\Tools\SchemaTool;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class SecurityPagesTest extends WebTestCase
 {
     private const TENANT_SLUG = 'acme-demo';
 
-    protected function setUp(): void
+    public function testTenantSubdomainLoginPageIsReachable(): void
     {
-        self::ensureKernelShutdown();
-        static::bootKernel();
-        $container = static::getContainer();
-
-        /** @var EntityManagerInterface $em */
-        $em = $container->get(EntityManagerInterface::class);
-        $tool = new SchemaTool($em);
-        $classes = $em->getMetadataFactory()->getAllMetadata();
-        $tool->dropSchema($classes);
-        $tool->createSchema($classes);
-
-        $tenantDatabasePath = sprintf('%s/var/tenants/%s.sqlite', $container->getParameter('kernel.project_dir'), self::TENANT_SLUG);
-        if (is_file($tenantDatabasePath)) {
-            unlink($tenantDatabasePath);
-        }
-
-        self::ensureKernelShutdown();
-    }
-
-    public function testLoginPageIsReachable(): void
-    {
-        $client = static::createClient();
-        $client->request('GET', sprintf('/t/%s/login', self::TENANT_SLUG));
+        $client = $this->createPreparedClient([
+            'HTTP_HOST' => sprintf('%s.localhost', self::TENANT_SLUG),
+        ]);
+        $client->request('GET', '/login');
 
         self::assertResponseIsSuccessful();
         self::assertSelectorTextContains('h1', 'Déverrouiller le coffre');
     }
 
-    public function testLoginPagePrefillsEmailFromQueryString(): void
+    public function testTenantSubdomainLoginPagePrefillsEmailFromQueryString(): void
     {
-        $client = static::createClient();
-        $crawler = $client->request('GET', sprintf('/t/%s/login?email=owner%%40example.com', self::TENANT_SLUG));
+        $client = $this->createPreparedClient([
+            'HTTP_HOST' => sprintf('%s.localhost', self::TENANT_SLUG),
+        ]);
+        $crawler = $client->request('GET', '/login?email=owner%40example.com');
 
         self::assertResponseIsSuccessful();
         self::assertSame('owner@example.com', $crawler->filter('#username')->attr('value'));
     }
 
-    public function testDashboardRedirectsAnonymousUsersToLogin(): void
+    public function testAnonymousProjectRouteRedirectsToLogin(): void
     {
-        $client = static::createClient();
-        $client->request('GET', sprintf('/t/%s', self::TENANT_SLUG));
+        $client = $this->createPreparedClient([
+            'HTTP_HOST' => sprintf('%s.localhost', self::TENANT_SLUG),
+        ]);
+        $client->request('GET', sprintf('/t/%s/projects', self::TENANT_SLUG));
 
-        self::assertResponseRedirects(sprintf('/t/%s/login', self::TENANT_SLUG));
+        self::assertResponseRedirects('/login');
+        $client->followRedirect();
+        self::assertResponseIsSuccessful();
     }
 
     public function testTenantSubdomainRootRedirectsAnonymousUsersToLogin(): void
     {
-        $client = static::createClient([], [
+        $client = $this->createPreparedClient([
             'HTTP_HOST' => sprintf('%s.localhost', self::TENANT_SLUG),
         ]);
         $client->request('GET', '/');
 
-        self::assertResponseRedirects(sprintf('/t/%s/login', self::TENANT_SLUG));
-    }
-
-    public function testTenantSubdomainLoginAliasRedirectsToTenantLogin(): void
-    {
-        $client = static::createClient([], [
-            'HTTP_HOST' => sprintf('%s.localhost', self::TENANT_SLUG),
-        ]);
-        $client->request('GET', '/login');
-
-        self::assertResponseRedirects(sprintf('/t/%s/login', self::TENANT_SLUG));
+        self::assertResponseRedirects('/login');
     }
 
     public function testSuccessfulLoginProvisionsTenantDatabase(): void
     {
-        $client = static::createClient();
+        $client = $this->createPreparedClient();
         $client->request('POST', '/internal/provisioning/tenant-admin', [], [], [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer test-provisioning-token',
@@ -106,27 +81,65 @@ final class SecurityPagesTest extends WebTestCase
         ], JSON_THROW_ON_ERROR));
         self::assertResponseStatusCodeSame(201);
 
-        $crawler = $client->request('GET', sprintf('/t/%s/login', self::TENANT_SLUG));
+        $crawler = $client->request('GET', '/login', [], [], [
+            'HTTP_HOST' => sprintf('%s.localhost', self::TENANT_SLUG),
+        ]);
         $client->submit($crawler->selectButton('Entrer dans le vault')->form([
             '_username' => 'admin@example.com',
             '_password' => 'StrongPassword123!',
         ]));
 
-        self::assertResponseRedirects(sprintf('/t/%s', self::TENANT_SLUG));
+        self::assertResponseRedirects(sprintf('http://%s.localhost/', self::TENANT_SLUG));
         self::assertFileExists($this->tenantDatabasePath());
+    }
 
-        /** @var TenantDatabaseSwitcher $switcher */
-        $switcher = static::getContainer()->get(TenantDatabaseSwitcher::class);
-        $switcher->switchToTenant(self::TENANT_SLUG);
+    public function testLegacyTenantLoginPathIsNotExposedAnymore(): void
+    {
+        $client = $this->createPreparedClient([
+            'HTTP_HOST' => sprintf('%s.localhost', self::TENANT_SLUG),
+        ]);
+        $client->request('GET', sprintf('/t/%s/login', self::TENANT_SLUG));
 
-        /** @var UserRepository $users */
-        $users = static::getContainer()->get(UserRepository::class);
-        $user = $users->findOneBy(['email' => 'admin@example.com']);
-        self::assertInstanceOf(User::class, $user);
+        self::assertResponseStatusCodeSame(404);
+        self::assertFileDoesNotExist($this->tenantDatabasePath());
     }
 
     private function tenantDatabasePath(): string
     {
         return sprintf('%s/var/tenants/%s.sqlite', static::getContainer()->getParameter('kernel.project_dir'), self::TENANT_SLUG);
+    }
+
+    /**
+     * @param array<string, string> $server
+     */
+    private function createPreparedClient(array $server = []): KernelBrowser
+    {
+        self::ensureKernelShutdown();
+        $client = static::createClient([], $server);
+        $container = static::getContainer();
+
+        /** @var TenantDatabaseSwitcher $switcher */
+        $switcher = $container->get(TenantDatabaseSwitcher::class);
+        $switcher->resetToBaseDatabase();
+
+        /** @var EntityManagerInterface $em */
+        $em = $container->get(EntityManagerInterface::class);
+        $connection = $em->getConnection();
+        $connection->executeStatement('PRAGMA foreign_keys = OFF');
+        $schemaManager = $connection->createSchemaManager();
+        foreach ($schemaManager->listTableNames() as $tableName) {
+            $connection->executeStatement(sprintf('DROP TABLE IF EXISTS "%s"', $tableName));
+        }
+        $connection->executeStatement('PRAGMA foreign_keys = ON');
+
+        $tool = new \Doctrine\ORM\Tools\SchemaTool($em);
+        $tool->createSchema($em->getMetadataFactory()->getAllMetadata());
+
+        $tenantDatabasePath = sprintf('%s/var/tenants/%s.sqlite', $container->getParameter('kernel.project_dir'), self::TENANT_SLUG);
+        if (is_file($tenantDatabasePath)) {
+            unlink($tenantDatabasePath);
+        }
+
+        return $client;
     }
 }

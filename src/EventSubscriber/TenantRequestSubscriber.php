@@ -12,6 +12,8 @@ use Symfony\Component\HttpKernel\KernelEvents;
 
 final readonly class TenantRequestSubscriber implements EventSubscriberInterface
 {
+    private const string TENANT_SESSION_KEY = '_vault_tenant_slug';
+
     public function __construct(
         private TenantContext $tenantContext,
         private TenantDatabaseSwitcher $databaseSwitcher,
@@ -22,7 +24,7 @@ final readonly class TenantRequestSubscriber implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            KernelEvents::REQUEST => ['onKernelRequest', 1024],
+            KernelEvents::REQUEST => ['onKernelRequest', 32],
         ];
     }
 
@@ -43,6 +45,10 @@ final readonly class TenantRequestSubscriber implements EventSubscriberInterface
 
         $request->attributes->set('tenantSlug', $tenantSlug);
         $this->tenantContext->setTenantSlug($tenantSlug);
+        if ($request->hasSession()) {
+            $request->getSession()->set(self::TENANT_SESSION_KEY, $tenantSlug);
+        }
+
         if ($this->shouldUseBaseDatabase($request)) {
             $this->databaseSwitcher->resetToBaseDatabase();
 
@@ -72,18 +78,28 @@ final readonly class TenantRequestSubscriber implements EventSubscriberInterface
 
         $subdomain = substr($requestHost, 0, -strlen($suffix));
         if (false === $subdomain || '' === $subdomain || str_contains($subdomain, '.')) {
-            return null;
+            return $this->resolveTenantSlugFromSession($request);
         }
 
-        return preg_match('/^[a-z0-9-]+$/', $subdomain) ? $subdomain : null;
+        return preg_match('/^[a-z0-9-]+$/', $subdomain) ? $subdomain : $this->resolveTenantSlugFromSession($request);
     }
 
     private function shouldUseBaseDatabase(\Symfony\Component\HttpFoundation\Request $request): bool
     {
         $path = $request->getPathInfo();
 
-        return '/' === $path
-            || '/login' === $path
-            || (bool) preg_match('#^/t/[a-z0-9-]+/(login|logout|2fa|2fa_check)$#', $path);
+        return in_array($path, ['/login', '/logout', '/2fa', '/2fa_check'], true)
+            || (bool) preg_match('#^/t/[a-z0-9-]+/(login|logout|2fa|2fa_check|security/2fa/setup)$#', $path);
+    }
+
+    private function resolveTenantSlugFromSession(\Symfony\Component\HttpFoundation\Request $request): ?string
+    {
+        if (!$this->shouldUseBaseDatabase($request) || !$request->hasSession()) {
+            return null;
+        }
+
+        $tenantSlug = $request->getSession()->get(self::TENANT_SESSION_KEY);
+
+        return is_string($tenantSlug) && '' !== trim($tenantSlug) ? trim($tenantSlug) : null;
     }
 }

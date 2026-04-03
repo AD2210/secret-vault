@@ -9,37 +9,15 @@ use App\Repository\UserRepository;
 use App\Tenancy\TenantDatabaseSwitcher;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 final class InternalProvisioningControllerTest extends WebTestCase
 {
-    private const TENANT_SLUG = 'acme-demo';
-
-    protected function setUp(): void
-    {
-        self::ensureKernelShutdown();
-        static::bootKernel();
-        $container = static::getContainer();
-
-        /** @var EntityManagerInterface $em */
-        $em = $container->get(EntityManagerInterface::class);
-        $tool = new SchemaTool($em);
-        $classes = $em->getMetadataFactory()->getAllMetadata();
-        $tool->dropSchema($classes);
-        $tool->createSchema($classes);
-
-        $tenantDatabasePath = sprintf('%s/var/tenants/%s.sqlite', $container->getParameter('kernel.project_dir'), self::TENANT_SLUG);
-        if (is_file($tenantDatabasePath)) {
-            unlink($tenantDatabasePath);
-        }
-
-        self::ensureKernelShutdown();
-    }
-
     public function testEndpointRejectsMissingBearerToken(): void
     {
-        $client = static::createClient();
+        $client = $this->createPreparedClient();
         $client->request('POST', '/internal/provisioning/tenant-admin', [], [], [
             'CONTENT_TYPE' => 'application/json',
         ], json_encode($this->validPayload(), JSON_THROW_ON_ERROR));
@@ -49,7 +27,7 @@ final class InternalProvisioningControllerTest extends WebTestCase
 
     public function testEndpointRejectsInvalidPayload(): void
     {
-        $client = static::createClient();
+        $client = $this->createPreparedClient();
         $client->request('POST', '/internal/provisioning/tenant-admin', [], [], [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer test-provisioning-token',
@@ -64,7 +42,7 @@ final class InternalProvisioningControllerTest extends WebTestCase
 
     public function testEndpointCreatesProvisionedUser(): void
     {
-        $client = static::createClient();
+        $client = $this->createPreparedClient();
         $client->request('POST', '/internal/provisioning/tenant-admin', [], [], [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer test-provisioning-token',
@@ -72,14 +50,15 @@ final class InternalProvisioningControllerTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(201);
 
+        $payload = $this->validPayload();
         /** @var UserRepository $users */
         $users = static::getContainer()->get(UserRepository::class);
-        $user = $users->findOneByEmailAndTenantSlug('admin@example.com', self::TENANT_SLUG);
+        $user = $users->findOneByEmailAndTenantSlug($payload['email'], $payload['tenant_slug']);
 
         self::assertInstanceOf(User::class, $user);
-        self::assertSame('admin@example.com', $user->getEmail());
+        self::assertSame($payload['email'], $user->getEmail());
         self::assertTrue($user->isActive());
-        self::assertFalse(is_file($this->tenantDatabasePath()));
+        self::assertFalse(is_file($this->tenantDatabasePath($payload['tenant_slug'])));
 
         /** @var UserPasswordHasherInterface $hasher */
         $hasher = static::getContainer()->get(UserPasswordHasherInterface::class);
@@ -88,7 +67,7 @@ final class InternalProvisioningControllerTest extends WebTestCase
 
     public function testEndpointAcceptsExtendedChildAppMetadata(): void
     {
-        $client = static::createClient();
+        $client = $this->createPreparedClient();
         $client->request('POST', '/internal/provisioning/tenant-admin', [], [], [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer test-provisioning-token',
@@ -104,7 +83,7 @@ final class InternalProvisioningControllerTest extends WebTestCase
 
     public function testEndpointIsIdempotentAndUpdatesExistingUser(): void
     {
-        $client = static::createClient();
+        $client = $this->createPreparedClient();
         $headers = [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer test-provisioning-token',
@@ -125,15 +104,17 @@ final class InternalProvisioningControllerTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(200);
 
+        $updatedEmail = (string) $updatedPayload['email'];
+        $tenantSlug = (string) $updatedPayload['tenant_slug'];
         /** @var UserRepository $users */
         $users = static::getContainer()->get(UserRepository::class);
-        $user = $users->findOneByEmailAndTenantSlug('admin.updated@example.com', self::TENANT_SLUG);
+        $user = $users->findOneByEmailAndTenantSlug($updatedEmail, $tenantSlug);
 
         self::assertInstanceOf(User::class, $user);
-        self::assertSame('admin.updated@example.com', $user->getEmail());
+        self::assertSame($updatedEmail, $user->getEmail());
         self::assertSame('Grace Hopper', $user->getDisplayName());
         self::assertFalse($user->isActive());
-        self::assertCount(1, $users->findAll());
+        self::assertCount(1, $users->findBy(['tenantSlug' => $tenantSlug]));
 
         /** @var UserPasswordHasherInterface $hasher */
         $hasher = static::getContainer()->get(UserPasswordHasherInterface::class);
@@ -147,15 +128,17 @@ final class InternalProvisioningControllerTest extends WebTestCase
      */
     private function validPayload(array $overrides = []): array
     {
+        $seed = $this->payloadSeed();
+
         return array_merge([
             'contract' => 'tenant-admin-provisioning:v1',
             'child_app_key' => 'vault',
             'child_app_name' => 'Client Secrets Vault',
-            'tenant_uuid' => '11111111-2222-7333-8444-555555555555',
-            'tenant_slug' => self::TENANT_SLUG,
+            'tenant_uuid' => $this->uuidFor('tenant-'.$seed),
+            'tenant_slug' => 'tenant-'.$seed,
             'tenant_name' => 'Acme Demo',
-            'user_uuid' => 'aaaaaaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee',
-            'email' => 'admin@example.com',
+            'user_uuid' => $this->uuidFor('user-'.$seed),
+            'email' => sprintf('%s@example.com', $seed),
             'first_name' => 'Ada',
             'last_name' => 'Lovelace',
             'status' => 'active',
@@ -165,8 +148,51 @@ final class InternalProvisioningControllerTest extends WebTestCase
         ], $overrides);
     }
 
-    private function tenantDatabasePath(): string
+    private function tenantDatabasePath(string $tenantSlug): string
     {
-        return sprintf('%s/var/tenants/%s.sqlite', static::getContainer()->getParameter('kernel.project_dir'), self::TENANT_SLUG);
+        return sprintf('%s/var/tenants/%s.sqlite', static::getContainer()->getParameter('kernel.project_dir'), $tenantSlug);
+    }
+
+    private function payloadSeed(): string
+    {
+        $normalized = strtolower((string) preg_replace('/[^a-z0-9]+/i', '-', $this->name()));
+
+        return trim($normalized, '-');
+    }
+
+    private function uuidFor(string $seed): string
+    {
+        $hex = md5($seed);
+
+        return sprintf(
+            '%s-%s-4%s-a%s-%s',
+            substr($hex, 0, 8),
+            substr($hex, 8, 4),
+            substr($hex, 13, 3),
+            substr($hex, 17, 3),
+            substr($hex, 20, 12),
+        );
+    }
+
+    private function createPreparedClient(): KernelBrowser
+    {
+        self::ensureKernelShutdown();
+        $client = static::createClient();
+        $container = static::getContainer();
+
+        /** @var TenantDatabaseSwitcher $switcher */
+        $switcher = $container->get(TenantDatabaseSwitcher::class);
+        $switcher->resetToBaseDatabase();
+
+        /** @var EntityManagerInterface $em */
+        $em = $container->get(EntityManagerInterface::class);
+        $connection = $em->getConnection();
+        $schemaManager = $connection->createSchemaManager();
+        if ([] === $schemaManager->listTableNames()) {
+            $tool = new SchemaTool($em);
+            $tool->createSchema($em->getMetadataFactory()->getAllMetadata());
+        }
+
+        return $client;
     }
 }

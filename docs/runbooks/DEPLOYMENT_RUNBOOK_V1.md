@@ -29,7 +29,7 @@ Déployer `client_secret_vault` sur son propre sous-domaine, avec un workflow Gi
 Dans `saas_base`, le routage de provisioning/login vers cette app utilise:
 
 - `CHILD_APP_VAULT_API_URL=https://secret-vault.dsn-dev.com`
-- `CHILD_APP_VAULT_LOGIN_URL=https://secret-vault.dsn-dev.com/login`
+- `CHILD_APP_VAULT_LOGIN_URL=https://{tenantSlug}.secret-vault.dsn-dev.com/login`
 - `CHILD_APP_VAULT_API_TOKEN=<même token que ci-dessus>`
 
 Pour une future app fille, reprendre exactement le même schéma avec une nouvelle clé applicative.

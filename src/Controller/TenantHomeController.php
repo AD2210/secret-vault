@@ -7,18 +7,25 @@ namespace App\Controller;
 use App\Entity\User;
 use App\Repository\ProjectRepository;
 use App\Repository\SecretRepository;
+use App\Tenancy\TenantContext;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/t/{tenantSlug}')]
 #[IsGranted('IS_AUTHENTICATED_FULLY')]
-final class DashboardController extends AbstractController
+final class TenantHomeController extends AbstractController
 {
-    #[Route('', name: 'app_dashboard', methods: ['GET'])]
-    public function __invoke(ProjectRepository $projects, SecretRepository $secrets): Response
-    {
+    #[Route('/', name: 'app_dashboard', methods: ['GET'])]
+    public function __invoke(
+        TenantContext $tenantContext,
+        ProjectRepository $projects,
+        SecretRepository $secrets,
+    ): Response {
+        if (null === $tenantContext->getTenantSlug()) {
+            throw $this->createNotFoundException();
+        }
+
         $user = $this->getCurrentUser();
 
         return $this->render('dashboard/index.html.twig', [
