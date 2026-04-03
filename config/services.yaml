@@ -33,6 +33,10 @@ services:
         arguments:
             $defaultUri: '%env(string:DEFAULT_URI)%'
 
+    App\Tenancy\TenantUrlGenerator:
+        arguments:
+            $defaultUri: '%env(string:DEFAULT_URI)%'
+
     App\Tenancy\TenantDatabasePathResolver:
         arguments:
             $projectDir: '%kernel.project_dir%'

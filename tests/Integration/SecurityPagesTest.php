@@ -24,6 +24,15 @@ final class SecurityPagesTest extends WebTestCase
         self::assertSelectorTextContains('h1', 'Déverrouiller le coffre');
     }
 
+    public function testBaseDomainLoginPageIsReachable(): void
+    {
+        $client = $this->createPreparedClient();
+        $client->request('GET', '/login');
+
+        self::assertResponseIsSuccessful();
+        self::assertSelectorTextContains('h1', 'Déverrouiller le coffre');
+    }
+
     public function testTenantSubdomainLoginPagePrefillsEmailFromQueryString(): void
     {
         $client = $this->createPreparedClient([
@@ -60,30 +69,26 @@ final class SecurityPagesTest extends WebTestCase
     public function testSuccessfulLoginProvisionsTenantDatabase(): void
     {
         $client = $this->createPreparedClient();
-        $client->request('POST', '/internal/provisioning/tenant-admin', [], [], [
-            'CONTENT_TYPE' => 'application/json',
-            'HTTP_AUTHORIZATION' => 'Bearer test-provisioning-token',
-        ], json_encode([
-            'contract' => 'tenant-admin-provisioning:v1',
-            'child_app_key' => 'vault',
-            'child_app_name' => 'Client Secrets Vault',
-            'tenant_uuid' => '11111111-2222-7333-8444-555555555555',
-            'tenant_slug' => self::TENANT_SLUG,
-            'tenant_name' => 'Acme Demo',
-            'user_uuid' => 'aaaaaaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee',
-            'email' => 'admin@example.com',
-            'first_name' => 'Ada',
-            'last_name' => 'Lovelace',
-            'status' => 'active',
-            'created_at' => '2026-03-13T20:00:00+00:00',
-            'updated_at' => '2026-03-13T20:00:00+00:00',
-            'password' => 'StrongPassword123!',
-        ], JSON_THROW_ON_ERROR));
-        self::assertResponseStatusCodeSame(201);
+        $this->provisionTenantAdmin($client);
 
         $crawler = $client->request('GET', '/login', [], [], [
             'HTTP_HOST' => sprintf('%s.localhost', self::TENANT_SLUG),
         ]);
+        $client->submit($crawler->selectButton('Entrer dans le vault')->form([
+            '_username' => 'admin@example.com',
+            '_password' => 'StrongPassword123!',
+        ]));
+
+        self::assertResponseRedirects(sprintf('http://%s.localhost/', self::TENANT_SLUG));
+        self::assertFileExists($this->tenantDatabasePath());
+    }
+
+    public function testSuccessfulDirectLoginFromBaseDomainRedirectsToTenantInstance(): void
+    {
+        $client = $this->createPreparedClient();
+        $this->provisionTenantAdmin($client);
+
+        $crawler = $client->request('GET', '/login');
         $client->submit($crawler->selectButton('Entrer dans le vault')->form([
             '_username' => 'admin@example.com',
             '_password' => 'StrongPassword123!',
@@ -107,6 +112,30 @@ final class SecurityPagesTest extends WebTestCase
     private function tenantDatabasePath(): string
     {
         return sprintf('%s/var/tenants/%s.sqlite', static::getContainer()->getParameter('kernel.project_dir'), self::TENANT_SLUG);
+    }
+
+    private function provisionTenantAdmin(KernelBrowser $client): void
+    {
+        $client->request('POST', '/internal/provisioning/tenant-admin', [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_AUTHORIZATION' => 'Bearer test-provisioning-token',
+        ], json_encode([
+            'contract' => 'tenant-admin-provisioning:v1',
+            'child_app_key' => 'vault',
+            'child_app_name' => 'Client Secrets Vault',
+            'tenant_uuid' => '11111111-2222-7333-8444-555555555555',
+            'tenant_slug' => self::TENANT_SLUG,
+            'tenant_name' => 'Acme Demo',
+            'user_uuid' => 'aaaaaaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee',
+            'email' => 'admin@example.com',
+            'first_name' => 'Ada',
+            'last_name' => 'Lovelace',
+            'status' => 'active',
+            'created_at' => '2026-03-13T20:00:00+00:00',
+            'updated_at' => '2026-03-13T20:00:00+00:00',
+            'password' => 'StrongPassword123!',
+        ], JSON_THROW_ON_ERROR));
+        self::assertResponseStatusCodeSame(201);
     }
 
     /**

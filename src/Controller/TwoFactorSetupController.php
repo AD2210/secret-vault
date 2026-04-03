@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Entity\User;
 use App\Form\TotpSetupType;
 use App\Security\TotpQrCodeFactory;
+use App\Tenancy\TenantUrlGenerator;
 use App\Tenancy\TenantUserSynchronizer;
 use Doctrine\ORM\EntityManagerInterface;
 use Scheb\TwoFactorBundle\Security\TwoFactor\Provider\Totp\TotpAuthenticatorInterface;
@@ -23,6 +24,7 @@ final class TwoFactorSetupController extends AbstractController
         private readonly TotpAuthenticatorInterface $totpAuthenticator,
         private readonly TotpQrCodeFactory $qrCodeFactory,
         private readonly TenantUserSynchronizer $tenantUsers,
+        private readonly TenantUrlGenerator $tenantUrls,
     ) {
     }
 
@@ -50,6 +52,11 @@ final class TwoFactorSetupController extends AbstractController
                 $this->tenantUsers->syncTenantUserToBootstrap($user);
 
                 $this->addFlash('success', 'Le double facteur est activé. Votre coffre-fort est maintenant verrouillé en MFA.');
+
+                $dashboardUrl = $this->tenantUrls->generateTenantDashboardUrlForUser($user);
+                if (null !== $dashboardUrl) {
+                    return $this->redirect($dashboardUrl);
+                }
 
                 return $this->redirectToRoute('app_dashboard');
             }

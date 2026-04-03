@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\Repository\ProjectRepository;
 use App\Repository\SecretRepository;
 use App\Tenancy\TenantContext;
+use App\Tenancy\TenantUrlGenerator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -19,10 +20,16 @@ final class TenantHomeController extends AbstractController
     #[Route('/', name: 'app_dashboard', methods: ['GET'])]
     public function __invoke(
         TenantContext $tenantContext,
+        TenantUrlGenerator $tenantUrls,
         ProjectRepository $projects,
         SecretRepository $secrets,
     ): Response {
         if (null === $tenantContext->getTenantSlug()) {
+            $dashboardUrl = $tenantUrls->generateTenantDashboardUrlForUser($this->getCurrentUser());
+            if (null !== $dashboardUrl) {
+                return $this->redirect($dashboardUrl);
+            }
+
             throw $this->createNotFoundException();
         }
 

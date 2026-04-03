@@ -17,6 +17,8 @@ Tenant authentication entry routes now resolve on the tenant subdomain:
 - `/login`
 - `/`
 
+The bootstrap domain also exposes `/login` for direct sign-in before redirecting the user to the tenant subdomain after successful authentication.
+
 Business routes still use the tenant prefix:
 
 - `/t/{tenantSlug}/projects`

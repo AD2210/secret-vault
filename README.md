@@ -40,6 +40,7 @@ Routes d'entrée tenantées:
 
 - login: `https://{tenantSlug}.<vault-host>/login`
 - dashboard: `https://{tenantSlug}.<vault-host>/`
+- login direct existant: `https://<vault-host>/login`, puis redirection vers l'instance tenant au succès d'authentification
 
 Routes métier encore préfixées:
 
@@ -141,6 +142,7 @@ Le coffre ne doit plus être exploité comme une base métier globale.
 Le runtime actuel est:
 
 - point d'entrée d'authentification sur le sous-domaine tenant: `https://{tenantSlug}.<vault-host>/login`
+- login direct possible sur le domaine racine bootstrap: `https://<vault-host>/login`
 - résolution du tenant via le sous-domaine, avec conservation de `/t/{tenantSlug}` uniquement pour les routes métier actuelles
 - bascule Doctrine vers `var/tenants/{tenantSlug}.sqlite`
 - création et migration de cette base au premier login réussi
