@@ -29,6 +29,10 @@ services:
         arguments:
             $allowedRoutes: '%app.vault.allowed_totp_setup_routes%'
 
+    App\EventSubscriber\TenantRequestSubscriber:
+        arguments:
+            $defaultUri: '%env(string:DEFAULT_URI)%'
+
     App\Tenancy\TenantDatabasePathResolver:
         arguments:
             $projectDir: '%kernel.project_dir%'

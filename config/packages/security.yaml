@@ -33,6 +33,8 @@ security:
     access_control:
         - { path: ^/(healthz|ready)$, roles: PUBLIC_ACCESS }
         - { path: ^/internal/provisioning/tenant-admin, roles: PUBLIC_ACCESS }
+        - { path: ^/$, roles: PUBLIC_ACCESS }
+        - { path: ^/login$, roles: PUBLIC_ACCESS }
         - { path: ^/t/[^/]+/projects/invitation/, roles: PUBLIC_ACCESS }
         - { path: ^/t/[^/]+/login, roles: PUBLIC_ACCESS }
         - { path: ^/t/[^/]+/2fa, roles: IS_AUTHENTICATED_2FA_IN_PROGRESS }

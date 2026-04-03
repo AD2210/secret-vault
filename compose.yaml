@@ -35,6 +35,35 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+  worker:
+    image: ${IMAGES_PREFIX:-}client-secret-vault-app:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    environment:
+      APP_ENV: ${APP_ENV:-prod}
+      APP_DEBUG: ${APP_DEBUG:-0}
+      APP_SECRET: ${APP_SECRET:-change-me-for-prod}
+      APP_SHARE_DIR: ${APP_SHARE_DIR:-var/share}
+      APP_2FA_ISSUER: ${APP_2FA_ISSUER:-Client Secrets Vault}
+      VAULT_ENCRYPTION_KEY: ${VAULT_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      CHILD_APP_PROVISIONING_TOKEN: ${CHILD_APP_PROVISIONING_TOKEN:-change-this-provisioning-token}
+      SYMFONY_TRUSTED_PROXIES: ${SYMFONY_TRUSTED_PROXIES:-private_ranges}
+      DEFAULT_URI: ${DEFAULT_URI:-https://secret-vault.dsn-dev.com}
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/var/data_prod.db}
+      MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN:-doctrine://default?auto_setup=0}
+      MAILER_DSN: ${MAILER_DSN:-null://null}
+    networks:
+      - edge
+    volumes:
+      - vault_var:/app/var
+    command: [ "php", "bin/console", "messenger:consume", "async", "--time-limit=3600", "--memory-limit=256M" ]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "tr '\\0' ' ' </proc/1/cmdline | grep -q 'messenger:consume'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
 volumes:
   vault_var:

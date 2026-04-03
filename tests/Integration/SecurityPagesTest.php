@@ -35,4 +35,24 @@ final class SecurityPagesTest extends WebTestCase
 
         self::assertResponseRedirects(sprintf('/t/%s/login', self::TENANT_SLUG));
     }
+
+    public function testTenantSubdomainRootRedirectsAnonymousUsersToLogin(): void
+    {
+        $client = static::createClient([], [
+            'HTTP_HOST' => sprintf('%s.localhost', self::TENANT_SLUG),
+        ]);
+        $client->request('GET', '/');
+
+        self::assertResponseRedirects(sprintf('/t/%s/login', self::TENANT_SLUG));
+    }
+
+    public function testTenantSubdomainLoginAliasRedirectsToTenantLogin(): void
+    {
+        $client = static::createClient([], [
+            'HTTP_HOST' => sprintf('%s.localhost', self::TENANT_SLUG),
+        ]);
+        $client->request('GET', '/login');
+
+        self::assertResponseRedirects(sprintf('/t/%s/login', self::TENANT_SLUG));
+    }
 }
