@@ -55,6 +55,17 @@ final class UserRepository extends ServiceEntityRepository implements PasswordUp
             ->getOneOrNullResult();
     }
 
+    public function findOneByEmailAndTenantSlug(string $email, ?string $tenantSlug): ?User
+    {
+        return $this->createQueryBuilder('u')
+            ->andWhere('u.email = :email')
+            ->andWhere('u.tenantSlug = :tenantSlug')
+            ->setParameter('email', mb_strtolower(trim($email)))
+            ->setParameter('tenantSlug', null !== $tenantSlug ? mb_strtolower(trim($tenantSlug)) : null)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     /**
      * @return list<User>
      */

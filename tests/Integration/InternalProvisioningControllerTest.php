@@ -72,17 +72,14 @@ final class InternalProvisioningControllerTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(201);
 
-        $this->switchToTenantDatabase();
         /** @var UserRepository $users */
         $users = static::getContainer()->get(UserRepository::class);
-        $user = $users->findOneByProvisioningIdentity(
-            '11111111-2222-7333-8444-555555555555',
-            'aaaaaaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee',
-        );
+        $user = $users->findOneByEmailAndTenantSlug('admin@example.com', self::TENANT_SLUG);
 
         self::assertInstanceOf(User::class, $user);
         self::assertSame('admin@example.com', $user->getEmail());
         self::assertTrue($user->isActive());
+        self::assertFalse(is_file($this->tenantDatabasePath()));
 
         /** @var UserPasswordHasherInterface $hasher */
         $hasher = static::getContainer()->get(UserPasswordHasherInterface::class);
@@ -128,13 +125,9 @@ final class InternalProvisioningControllerTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(200);
 
-        $this->switchToTenantDatabase();
         /** @var UserRepository $users */
         $users = static::getContainer()->get(UserRepository::class);
-        $user = $users->findOneByProvisioningIdentity(
-            '11111111-2222-7333-8444-555555555555',
-            'aaaaaaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee',
-        );
+        $user = $users->findOneByEmailAndTenantSlug('admin.updated@example.com', self::TENANT_SLUG);
 
         self::assertInstanceOf(User::class, $user);
         self::assertSame('admin.updated@example.com', $user->getEmail());
@@ -172,10 +165,8 @@ final class InternalProvisioningControllerTest extends WebTestCase
         ], $overrides);
     }
 
-    private function switchToTenantDatabase(): void
+    private function tenantDatabasePath(): string
     {
-        /** @var TenantDatabaseSwitcher $switcher */
-        $switcher = static::getContainer()->get(TenantDatabaseSwitcher::class);
-        $switcher->switchToTenant(self::TENANT_SLUG);
+        return sprintf('%s/var/tenants/%s.sqlite', static::getContainer()->getParameter('kernel.project_dir'), self::TENANT_SLUG);
     }
 }

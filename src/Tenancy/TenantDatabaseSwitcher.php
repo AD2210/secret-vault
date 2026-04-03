@@ -10,6 +10,8 @@ use Doctrine\ORM\EntityManagerInterface;
 final class TenantDatabaseSwitcher
 {
     private readonly array $baseParams;
+    private ?string $currentTenantSlug = null;
+    private bool $usingBaseDatabase = true;
 
     public function __construct(
         private readonly Connection $connection,
@@ -23,6 +25,8 @@ final class TenantDatabaseSwitcher
     {
         $path = $this->pathResolver->resolvePath($tenantSlug);
         $this->applyPath($path);
+        $this->currentTenantSlug = $tenantSlug;
+        $this->usingBaseDatabase = false;
 
         return $path;
     }
@@ -30,6 +34,18 @@ final class TenantDatabaseSwitcher
     public function resetToBaseDatabase(): void
     {
         $this->applyParams($this->baseParams);
+        $this->currentTenantSlug = null;
+        $this->usingBaseDatabase = true;
+    }
+
+    public function isUsingBaseDatabase(): bool
+    {
+        return $this->usingBaseDatabase;
+    }
+
+    public function getCurrentTenantSlug(): ?string
+    {
+        return $this->currentTenantSlug;
     }
 
     private function applyPath(string $path): void

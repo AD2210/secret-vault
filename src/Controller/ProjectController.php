@@ -14,6 +14,8 @@ use App\Repository\ProjectRepository;
 use App\Repository\UserRepository;
 use App\Security\ProjectVoter;
 use App\Security\VaultCipher;
+use App\Tenancy\TenantContext;
+use App\Tenancy\TenantUserSynchronizer;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -33,6 +35,8 @@ final class ProjectController extends AbstractController
     public function __construct(
         private readonly VaultCipher $cipher,
         private readonly MailerInterface $mailer,
+        private readonly TenantContext $tenantContext,
+        private readonly TenantUserSynchronizer $tenantUsers,
     ) {
     }
 
@@ -110,7 +114,10 @@ final class ProjectController extends AbstractController
             ]);
         }
 
-        $user = (new User())->setEmail($invitation->getEmail())->setIsActive(true);
+        $user = (new User())
+            ->setEmail($invitation->getEmail())
+            ->setTenantSlug($this->tenantContext->requireTenantSlug())
+            ->setIsActive(true);
         $form = $this->createForm(InvitationRegistrationType::class, $user, [
             'email' => $invitation->getEmail(),
         ]);
@@ -130,6 +137,7 @@ final class ProjectController extends AbstractController
             }
 
             $em->flush();
+            $this->tenantUsers->syncTenantUserToBootstrap($user);
 
             if (!$invitation->isApproved()) {
                 $this->sendInvitationApprovalRequest($invitation);

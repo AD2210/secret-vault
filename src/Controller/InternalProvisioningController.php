@@ -7,7 +7,7 @@ namespace App\Controller;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use App\Tenancy\TenantContext;
-use App\Tenancy\TenantDatabaseManager;
+use App\Tenancy\TenantUserSynchronizer;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -30,7 +30,7 @@ final class InternalProvisioningController extends AbstractController
         private readonly ValidatorInterface $validator,
         private readonly LoggerInterface $logger,
         private readonly TenantContext $tenantContext,
-        private readonly TenantDatabaseManager $tenantDatabaseManager,
+        private readonly TenantUserSynchronizer $tenantUsers,
     ) {
     }
 
@@ -74,10 +74,9 @@ final class InternalProvisioningController extends AbstractController
         $password = (string) $payload['password'];
 
         $this->tenantContext->setTenantSlug($tenantSlug);
-        $databasePath = $this->tenantDatabaseManager->ensureTenantDatabase($tenantSlug);
 
         $user = $this->users->findOneByProvisioningIdentity($tenantUuid, $userUuid);
-        $emailOwner = $this->users->findOneBy(['email' => $email]);
+        $emailOwner = $this->users->findOneByEmailAndTenantSlug($email, $tenantSlug);
         if ($emailOwner instanceof User && $emailOwner !== $user) {
             return $this->logAndRespond(409, 'tenant.admin.provisioning.email_conflict', [
                 'status' => 'conflict',
@@ -96,6 +95,7 @@ final class InternalProvisioningController extends AbstractController
         }
 
         $user
+            ->setTenantSlug($tenantSlug)
             ->setEmail($email)
             ->setFirstName($firstName)
             ->setLastName($lastName)
@@ -103,6 +103,7 @@ final class InternalProvisioningController extends AbstractController
             ->setPassword($this->hasher->hashPassword($user, $password));
 
         $this->em->flush();
+        $this->tenantUsers->syncBootstrapUserToTenant($user, false);
 
         return $this->logAndRespond($statusCode, 'tenant.admin.provisioning.succeeded', [
             'status' => 201 === $statusCode ? 'created' : 'updated',
@@ -113,7 +114,7 @@ final class InternalProvisioningController extends AbstractController
             'user_uuid' => $userUuid,
             'email' => $email,
             'user_id' => $user->getIdString(),
-            'database_path' => $databasePath,
+            'tenant_database_ready' => $this->tenantUsers->tenantDatabaseExists($tenantSlug),
         ], $tenantUuid, $userUuid, $contract, $childAppKey);
     }
 

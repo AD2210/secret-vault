@@ -43,6 +43,12 @@ final readonly class TenantRequestSubscriber implements EventSubscriberInterface
 
         $request->attributes->set('tenantSlug', $tenantSlug);
         $this->tenantContext->setTenantSlug($tenantSlug);
+        if ($this->shouldUseBaseDatabase($request)) {
+            $this->databaseSwitcher->resetToBaseDatabase();
+
+            return;
+        }
+
         $this->databaseSwitcher->switchToTenant($tenantSlug);
     }
 
@@ -70,5 +76,14 @@ final readonly class TenantRequestSubscriber implements EventSubscriberInterface
         }
 
         return preg_match('/^[a-z0-9-]+$/', $subdomain) ? $subdomain : null;
+    }
+
+    private function shouldUseBaseDatabase(\Symfony\Component\HttpFoundation\Request $request): bool
+    {
+        $path = $request->getPathInfo();
+
+        return '/' === $path
+            || '/login' === $path
+            || (bool) preg_match('#^/t/[a-z0-9-]+/(login|logout|2fa|2fa_check)$#', $path);
     }
 }
