@@ -50,9 +50,16 @@ final class TenantDatabaseSwitcher
 
     private function applyPath(string $path): void
     {
-        $params = $this->baseParams;
-        unset($params['url'], $params['dbname'], $params['memory']);
-        $params['path'] = $path;
+        $params = [
+            'driver' => 'pdo_sqlite',
+            'path' => $path,
+        ];
+
+        foreach (['charset', 'driverOptions', 'defaultTableOptions', 'idle_connection_ttl'] as $key) {
+            if (array_key_exists($key, $this->baseParams)) {
+                $params[$key] = $this->baseParams[$key];
+            }
+        }
 
         $this->applyParams($params);
     }
