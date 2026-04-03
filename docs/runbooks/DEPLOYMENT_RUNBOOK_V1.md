@@ -50,6 +50,20 @@ Les workflows:
 
 uploade un artefact, puis lancent `ops/server/deploy_release.sh` sur le serveur cible.
 
+## Vérification post-déploiement
+
+1. Vérifier la santé simple:
+   ```bash
+   curl -fsS https://secret-vault.dsn-dev.com/healthz
+   ```
+2. Vérifier la readiness applicative:
+   ```bash
+   curl -i https://secret-vault.dsn-dev.com/ready
+   ```
+3. Attendu:
+   - `200 READY` si la base bootstrap est migrée et si `var/tenants` est writable
+   - `503` avec détail si la migration `tenant_slug` manque ou si le répertoire tenant n'est pas accessible en écriture
+
 ## Remarques
 
 - `BASE_URI` est la source de vérité pour l'URL publique et alimente `DEFAULT_URI` et le healthcheck.

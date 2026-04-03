@@ -25,6 +25,9 @@ services:
     App\:
         resource: '../src/'
 
+    App\Controller\HealthController:
+        tags: ['controller.service_arguments']
+
     App\EventSubscriber\ForceTotpEnrollmentSubscriber:
         arguments:
             $allowedRoutes: '%app.vault.allowed_totp_setup_routes%'
