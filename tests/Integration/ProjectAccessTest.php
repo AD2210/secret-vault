@@ -6,15 +6,12 @@ namespace App\Tests\Integration;
 
 use App\Entity\Project;
 use App\Entity\User;
-use App\Tenancy\TenantDatabaseSwitcher;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class ProjectAccessTest extends WebTestCase
 {
-    private const TENANT_SLUG = 'acme-demo';
-
     protected function setUp(): void
     {
         self::ensureKernelShutdown();
@@ -23,21 +20,9 @@ final class ProjectAccessTest extends WebTestCase
 
         /** @var EntityManagerInterface $em */
         $em = $container->get(EntityManagerInterface::class);
-        /** @var TenantDatabaseSwitcher $switcher */
-        $switcher = $container->get(TenantDatabaseSwitcher::class);
         $tool = new SchemaTool($em);
         $classes = $em->getMetadataFactory()->getAllMetadata();
 
-        $tool->dropSchema($classes);
-        $tool->createSchema($classes);
-
-        $tenantDatabasePath = sprintf('%s/var/tenants/%s.sqlite', $container->getParameter('kernel.project_dir'), self::TENANT_SLUG);
-        if (is_file($tenantDatabasePath)) {
-            unlink($tenantDatabasePath);
-        }
-
-        $switcher->switchToTenant(self::TENANT_SLUG);
-        $tool = new SchemaTool($em);
         $tool->dropSchema($classes);
         $tool->createSchema($classes);
 
@@ -50,9 +35,6 @@ final class ProjectAccessTest extends WebTestCase
 
         /** @var EntityManagerInterface $em */
         $em = static::getContainer()->get(EntityManagerInterface::class);
-        /** @var TenantDatabaseSwitcher $switcher */
-        $switcher = static::getContainer()->get(TenantDatabaseSwitcher::class);
-        $switcher->switchToTenant(self::TENANT_SLUG);
 
         $user = (new User('owner@example.com', 'Owner', 'User'))
             ->setRoles(['ROLE_USER'])
@@ -70,7 +52,7 @@ final class ProjectAccessTest extends WebTestCase
         $em->clear();
 
         $client->loginUser($user);
-        $client->request('GET', sprintf('/t/%s/projects', self::TENANT_SLUG));
+        $client->request('GET', '/projects');
 
         self::assertResponseIsSuccessful();
         self::assertSelectorTextContains('table', 'Project Alpha');

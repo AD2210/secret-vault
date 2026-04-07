@@ -46,18 +46,10 @@ final class ProjectType extends AbstractType
             ])
             ->add('members', EntityType::class, [
                 'class' => User::class,
-                'query_builder' => static function (UserRepository $users) use ($options) {
-                    $qb = $users->createQueryBuilder('u')
+                'query_builder' => static function (UserRepository $users) {
+                    return $users->createQueryBuilder('u')
                         ->orderBy('u.lastName', 'ASC')
                         ->addOrderBy('u.firstName', 'ASC');
-
-                    $tenantUuid = $options['tenant_uuid'];
-                    if (is_string($tenantUuid) && '' !== $tenantUuid) {
-                        $qb->andWhere('u.externalTenantUuid = :tenantUuid')
-                            ->setParameter('tenantUuid', $tenantUuid);
-                    }
-
-                    return $qb;
                 },
                 'choice_label' => static fn (User $user): string => sprintf('%s <%s>', $user->getDisplayName(), $user->getEmail()),
                 'label' => 'Membres autorisés',
@@ -122,9 +114,7 @@ final class ProjectType extends AbstractType
         $resolver->setDefaults([
             'data_class' => Project::class,
             'plaintext_defaults' => [],
-            'tenant_uuid' => null,
         ]);
         $resolver->setAllowedTypes('plaintext_defaults', 'array');
-        $resolver->setAllowedTypes('tenant_uuid', ['null', 'string']);
     }
 }

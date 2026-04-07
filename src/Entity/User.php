@@ -17,8 +17,7 @@ use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: '`user`')]
-#[ORM\UniqueConstraint(name: 'UNIQ_TENANT_IDENTIFIER_EMAIL', fields: ['tenantSlug', 'email'])]
-#[ORM\UniqueConstraint(name: 'UNIQ_EXTERNAL_TENANT_USER', fields: ['externalTenantUuid', 'externalUserUuid'])]
+#[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_EMAIL', fields: ['email'])]
 #[ORM\HasLifecycleCallbacks]
 class User implements UserInterface, PasswordAuthenticatedUserInterface, TotpTwoFactorInterface
 {
@@ -28,9 +27,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TotpTwo
 
     #[ORM\Column(length: 180)]
     private string $email;
-
-    #[ORM\Column(length: 80, nullable: true)]
-    private ?string $tenantSlug = null;
 
     #[ORM\Column(length: 100)]
     private string $firstName;
@@ -55,12 +51,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TotpTwo
 
     #[ORM\Column(options: ['default' => false])]
     private bool $totpEnabled = false;
-
-    #[ORM\Column(length: 36, nullable: true)]
-    private ?string $externalTenantUuid = null;
-
-    #[ORM\Column(length: 36, nullable: true)]
-    private ?string $externalUserUuid = null;
 
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
@@ -110,19 +100,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TotpTwo
     public function getEmail(): string
     {
         return $this->email;
-    }
-
-    public function getTenantSlug(): ?string
-    {
-        return $this->tenantSlug;
-    }
-
-    public function setTenantSlug(?string $tenantSlug): static
-    {
-        $normalized = null !== $tenantSlug ? mb_strtolower(trim($tenantSlug)) : null;
-        $this->tenantSlug = null !== $normalized && '' !== $normalized ? $normalized : null;
-
-        return $this;
     }
 
     public function setEmail(string $email): static
@@ -221,30 +198,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TotpTwo
     public function getTotpSecret(): ?string
     {
         return $this->totpSecret;
-    }
-
-    public function getExternalTenantUuid(): ?string
-    {
-        return $this->externalTenantUuid;
-    }
-
-    public function setExternalTenantUuid(?string $externalTenantUuid): static
-    {
-        $this->externalTenantUuid = null !== $externalTenantUuid ? trim($externalTenantUuid) : null;
-
-        return $this;
-    }
-
-    public function getExternalUserUuid(): ?string
-    {
-        return $this->externalUserUuid;
-    }
-
-    public function setExternalUserUuid(?string $externalUserUuid): static
-    {
-        $this->externalUserUuid = null !== $externalUserUuid ? trim($externalUserUuid) : null;
-
-        return $this;
     }
 
     public function prepareTotp(string $totpSecret): static

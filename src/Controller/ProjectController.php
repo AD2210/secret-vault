@@ -14,8 +14,6 @@ use App\Repository\ProjectRepository;
 use App\Repository\UserRepository;
 use App\Security\ProjectVoter;
 use App\Security\VaultCipher;
-use App\Tenancy\TenantContext;
-use App\Tenancy\TenantUserSynchronizer;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -29,18 +27,15 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/t/{tenantSlug}/projects')]
 final class ProjectController extends AbstractController
 {
     public function __construct(
         private readonly VaultCipher $cipher,
         private readonly MailerInterface $mailer,
-        private readonly TenantContext $tenantContext,
-        private readonly TenantUserSynchronizer $tenantUsers,
     ) {
     }
 
-    #[Route('/invitation/{token}', name: 'app_project_invitation_accept', methods: ['GET', 'POST'])]
+    #[Route('/projects/invitation/{token}', name: 'app_project_invitation_accept', methods: ['GET', 'POST'])]
     public function acceptInvitation(
         string $token,
         Request $request,
@@ -75,7 +70,7 @@ final class ProjectController extends AbstractController
             ]);
         }
 
-        $existingUser = $users->findOneByEmailInTenant($invitation->getEmail(), $this->getTenantUuidForInvitation($invitation));
+        $existingUser = $users->findOneBy(['email' => $invitation->getEmail()]);
         $currentUser = $this->getUser();
 
         if ($currentUser instanceof User) {
@@ -116,7 +111,6 @@ final class ProjectController extends AbstractController
 
         $user = (new User())
             ->setEmail($invitation->getEmail())
-            ->setTenantSlug($this->tenantContext->requireTenantSlug())
             ->setIsActive(true);
         $form = $this->createForm(InvitationRegistrationType::class, $user, [
             'email' => $invitation->getEmail(),
@@ -137,7 +131,6 @@ final class ProjectController extends AbstractController
             }
 
             $em->flush();
-            $this->tenantUsers->syncTenantUserToBootstrap($user);
 
             if (!$invitation->isApproved()) {
                 $this->sendInvitationApprovalRequest($invitation);
@@ -156,7 +149,7 @@ final class ProjectController extends AbstractController
     }
 
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
-    #[Route('', name: 'app_project_index', methods: ['GET'])]
+    #[Route('/projects', name: 'app_project_index', methods: ['GET'])]
     public function index(ProjectRepository $projects): Response
     {
         return $this->render('project/index.html.twig', [
@@ -165,13 +158,12 @@ final class ProjectController extends AbstractController
     }
 
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
-    #[Route('/new', name: 'app_project_new', methods: ['GET', 'POST'])]
+    #[Route('/projects/new', name: 'app_project_new', methods: ['GET', 'POST'])]
     public function new(Request $request, EntityManagerInterface $em): Response
     {
         $project = new Project();
         $form = $this->createForm(ProjectType::class, $project, [
             'plaintext_defaults' => [],
-            'tenant_uuid' => $this->getCurrentTenantUuid(),
         ]);
         $form->handleRequest($request);
 
@@ -198,7 +190,7 @@ final class ProjectController extends AbstractController
     }
 
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
-    #[Route('/{id}', name: 'app_project_show', methods: ['GET'])]
+    #[Route('/projects/{id}', name: 'app_project_show', methods: ['GET'])]
     #[IsGranted(ProjectVoter::VIEW, subject: 'project')]
     public function show(Project $project): Response
     {
@@ -210,13 +202,12 @@ final class ProjectController extends AbstractController
     }
 
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
-    #[Route('/{id}/edit', name: 'app_project_edit', methods: ['GET', 'POST'])]
+    #[Route('/projects/{id}/edit', name: 'app_project_edit', methods: ['GET', 'POST'])]
     #[IsGranted(ProjectVoter::EDIT, subject: 'project')]
     public function edit(Request $request, Project $project, EntityManagerInterface $em): Response
     {
         $form = $this->createForm(ProjectType::class, $project, [
             'plaintext_defaults' => $this->decryptProject($project),
-            'tenant_uuid' => $this->getCurrentTenantUuid(),
         ]);
         $form->handleRequest($request);
 
@@ -241,7 +232,7 @@ final class ProjectController extends AbstractController
     }
 
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
-    #[Route('/{id}/delete', name: 'app_project_delete', methods: ['POST'])]
+    #[Route('/projects/{id}/delete', name: 'app_project_delete', methods: ['POST'])]
     #[IsGranted(ProjectVoter::EDIT, subject: 'project')]
     public function delete(Request $request, Project $project, EntityManagerInterface $em): Response
     {
@@ -258,7 +249,7 @@ final class ProjectController extends AbstractController
     }
 
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
-    #[Route('/{id}/invitations/{invitation}/approve', name: 'app_project_invitation_approve', methods: ['POST'])]
+    #[Route('/projects/{id}/invitations/{invitation}/approve', name: 'app_project_invitation_approve', methods: ['POST'])]
     public function approveInvitation(
         Request $request,
         Project $project,
@@ -287,7 +278,7 @@ final class ProjectController extends AbstractController
     }
 
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
-    #[Route('/{id}/invitations/{invitation}/revoke', name: 'app_project_invitation_revoke', methods: ['POST'])]
+    #[Route('/projects/{id}/invitations/{invitation}/revoke', name: 'app_project_invitation_revoke', methods: ['POST'])]
     public function revokeInvitation(
         Request $request,
         Project $project,
@@ -397,7 +388,7 @@ final class ProjectController extends AbstractController
 
         /** @var UserRepository $users */
         $users = $em->getRepository(User::class);
-        $existingUser = $users->findOneByEmailInTenant($inviteEmail, $this->getTenantUuidForProject($project));
+        $existingUser = $users->findOneBy(['email' => $inviteEmail]);
         if ($existingUser instanceof User) {
             $invitation->setInviteeUser($existingUser);
         }
@@ -453,20 +444,5 @@ final class ProjectController extends AbstractController
         }
 
         throw $this->createNotFoundException();
-    }
-
-    private function getCurrentTenantUuid(): ?string
-    {
-        return $this->getCurrentUser()->getExternalTenantUuid();
-    }
-
-    private function getTenantUuidForProject(Project $project): ?string
-    {
-        return $project->getCreatedBy()->getExternalTenantUuid();
-    }
-
-    private function getTenantUuidForInvitation(ProjectAccessInvitation $invitation): ?string
-    {
-        return $this->getTenantUuidForProject($invitation->getProject());
     }
 }

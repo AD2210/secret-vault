@@ -2,7 +2,7 @@
 
 ## Objectif
 
-Déployer `client_secret_vault` sur son propre sous-domaine, avec un workflow GitHub Actions et un déploiement par release.
+Déployer `client_secret_vault` comme application Symfony monobase avec PostgreSQL dédié.
 
 ## Domaine prévu
 
@@ -16,23 +16,15 @@ Déployer `client_secret_vault` sur son propre sous-domaine, avec un workflow Gi
    ```
 2. Copier `ops/config/server.env.example` vers `/etc/client-secret-vault/server.env` puis adapter les secrets.
 3. Vérifier que le reverse proxy du serveur pointe `secret-vault.dsn-dev.com` vers `127.0.0.1:8090`.
-4. Utiliser la même valeur pour:
-   - `CHILD_APP_PROVISIONING_TOKEN` dans `/etc/client-secret-vault/server.env`
-   - `CHILD_APP_VAULT_API_TOKEN` dans `/etc/saas/server.env`
+4. Vérifier les variables PostgreSQL:
+   - `POSTGRES_DB`
+   - `POSTGRES_USER`
+   - `POSTGRES_PASSWORD`
+   - `DATABASE_URL`
 5. Convention de répertoire:
    - app publiée: `/srv/secret-vault/app`
    - releases internes: `/srv/secret-vault/releases`
-   - la version déployée est choisie dans GitHub Actions; le lien `app` sert uniquement au switch atomique côté serveur
-
-## Référencement dans l'app mère
-
-Dans `saas_base`, le routage de provisioning/login vers cette app utilise:
-
-- `CHILD_APP_VAULT_API_URL=https://secret-vault.dsn-dev.com`
-- `CHILD_APP_VAULT_LOGIN_URL=https://{tenantSlug}.secret-vault.dsn-dev.com/login`
-- `CHILD_APP_VAULT_API_TOKEN=<même token que ci-dessus>`
-
-Pour une future app fille, reprendre exactement le même schéma avec une nouvelle clé applicative.
+   - le lien `app` sert au switch atomique côté serveur
 
 ## Secrets GitHub attendus
 
@@ -44,11 +36,7 @@ Pour une future app fille, reprendre exactement le même schéma avec une nouvel
 
 ## Déploiement
 
-Les workflows:
-
-- `.github/workflows/cd-prod.yml`
-
-uploade un artefact, puis lancent `ops/server/deploy_release.sh` sur le serveur cible.
+Le workflow principal est [cd-prod.yml](/home/andel/PhpstormProjects/client_secret_vault/.github/workflows/cd-prod.yml).
 
 ## Vérification post-déploiement
 
@@ -61,10 +49,11 @@ uploade un artefact, puis lancent `ops/server/deploy_release.sh` sur le serveur 
    curl -i https://secret-vault.dsn-dev.com/ready
    ```
 3. Attendu:
-   - `200 READY` si la base bootstrap est migrée et si `var/tenants` est writable
-   - `503` avec détail si la migration `tenant_slug` manque ou si le répertoire tenant n'est pas accessible en écriture
+   - `200 READY` si la base est joignable et la table `user` présente
+   - `503` avec détail si la base n’est pas migrée ou n’est pas accessible
 
 ## Remarques
 
-- `BASE_URI` est la source de vérité pour l'URL publique et alimente `DEFAULT_URI` et le healthcheck.
-- `SERVER_NAME` sert de paramètre explicite pour la stack et le reverse proxy.
+- `BASE_URI` reste la source de vérité pour l’URL publique.
+- la stack Docker embarque un service PostgreSQL accessible en interne sur `database:5432`
+- le port hôte Postgres recommandé reste `5452`

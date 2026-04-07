@@ -7,8 +7,6 @@ namespace App\Controller;
 use App\Entity\User;
 use App\Form\UserType;
 use App\Repository\UserRepository;
-use App\Tenancy\TenantContext;
-use App\Tenancy\TenantUserSynchronizer;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -17,17 +15,10 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/t/{tenantSlug}/team')]
 #[IsGranted('ROLE_ADMIN')]
 final class TeamController extends AbstractController
 {
-    public function __construct(
-        private readonly TenantContext $tenantContext,
-        private readonly TenantUserSynchronizer $tenantUsers,
-    ) {
-    }
-
-    #[Route('', name: 'app_team_index', methods: ['GET'])]
+    #[Route('/team', name: 'app_team_index', methods: ['GET'])]
     public function index(UserRepository $users): Response
     {
         return $this->render('team/index.html.twig', [
@@ -35,12 +26,11 @@ final class TeamController extends AbstractController
         ]);
     }
 
-    #[Route('/new', name: 'app_team_new', methods: ['GET', 'POST'])]
+    #[Route('/team/new', name: 'app_team_new', methods: ['GET', 'POST'])]
     public function new(Request $request, EntityManagerInterface $em, UserPasswordHasherInterface $hasher): Response
     {
         $user = new User();
         $user->setIsActive(true);
-        $user->setTenantSlug($this->tenantContext->requireTenantSlug());
 
         $form = $this->createForm(UserType::class, $user, [
             'require_password' => true,
@@ -55,7 +45,6 @@ final class TeamController extends AbstractController
 
             $em->persist($user);
             $em->flush();
-            $this->tenantUsers->syncTenantUserToBootstrap($user);
 
             $this->addFlash('success', 'Utilisateur créé. Il devra activer son 2FA à la première connexion.');
 
@@ -68,7 +57,7 @@ final class TeamController extends AbstractController
         ]);
     }
 
-    #[Route('/{id}/edit', name: 'app_team_edit', methods: ['GET', 'POST'])]
+    #[Route('/team/{id}/edit', name: 'app_team_edit', methods: ['GET', 'POST'])]
     public function edit(Request $request, User $user, EntityManagerInterface $em, UserPasswordHasherInterface $hasher): Response
     {
         $form = $this->createForm(UserType::class, $user, [
@@ -79,7 +68,6 @@ final class TeamController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $user->setRoles($form->get('is_admin')->getData() ? ['ROLE_ADMIN'] : []);
-            $user->setTenantSlug($this->tenantContext->requireTenantSlug());
 
             $plainPassword = $form->get('plainPassword')->getData();
             if (is_string($plainPassword) && '' !== $plainPassword) {
@@ -91,7 +79,6 @@ final class TeamController extends AbstractController
             }
 
             $em->flush();
-            $this->tenantUsers->syncTenantUserToBootstrap($user);
 
             $this->addFlash('success', 'Utilisateur mis à jour.');
 

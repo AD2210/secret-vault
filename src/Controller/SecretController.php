@@ -18,7 +18,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/t/{tenantSlug}/projects')]
 #[IsGranted('IS_AUTHENTICATED_FULLY')]
 final class SecretController extends AbstractController
 {
@@ -26,7 +25,7 @@ final class SecretController extends AbstractController
     {
     }
 
-    #[Route('/{id}/secrets/new', name: 'app_secret_new', methods: ['GET', 'POST'])]
+    #[Route('/projects/{id}/secrets/new', name: 'app_secret_new', methods: ['GET', 'POST'])]
     #[IsGranted(ProjectVoter::EDIT, subject: 'project')]
     public function new(Request $request, Project $project, EntityManagerInterface $em): Response
     {
@@ -55,7 +54,7 @@ final class SecretController extends AbstractController
         ]);
     }
 
-    #[Route('/secret/{id}/edit', name: 'app_secret_edit', methods: ['GET', 'POST'])]
+    #[Route('/projects/secret/{id}/edit', name: 'app_secret_edit', methods: ['GET', 'POST'])]
     #[IsGranted(SecretVoter::EDIT, subject: 'secret')]
     public function edit(Request $request, Secret $secret, EntityManagerInterface $em): Response
     {

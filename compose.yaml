@@ -7,16 +7,15 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile
     environment:
-      APP_ENV: ${APP_ENV:-prod}
-      APP_DEBUG: ${APP_DEBUG:-0}
+      APP_ENV: ${DOCKER_APP_ENV:-prod}
+      APP_DEBUG: ${DOCKER_APP_DEBUG:-0}
       APP_SECRET: ${APP_SECRET:-change-me-for-prod}
       APP_SHARE_DIR: ${APP_SHARE_DIR:-var/share}
       APP_2FA_ISSUER: ${APP_2FA_ISSUER:-Client Secrets Vault}
       VAULT_ENCRYPTION_KEY: ${VAULT_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
-      CHILD_APP_PROVISIONING_TOKEN: ${CHILD_APP_PROVISIONING_TOKEN:-change-this-provisioning-token}
       SYMFONY_TRUSTED_PROXIES: ${SYMFONY_TRUSTED_PROXIES:-private_ranges}
       DEFAULT_URI: ${DEFAULT_URI:-https://secret-vault.dsn-dev.com}
-      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/var/data_prod.db}
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-!ChangeMe!}@database:5432/${POSTGRES_DB:-client_secret_vault}?serverVersion=16&charset=utf8}
       MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN:-doctrine://default?auto_setup=0}
       MAILER_DSN: ${MAILER_DSN:-null://null}
     ports:
@@ -25,11 +24,15 @@ services:
       edge:
         aliases:
           - secret-vault-app
+      backend:
     volumes:
       - vault_var:/app/var
       - caddy_data:/data
       - caddy_config:/config
     restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1/healthz >/dev/null || exit 1"]
       interval: 30s
@@ -41,36 +44,56 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile
     environment:
-      APP_ENV: ${APP_ENV:-prod}
-      APP_DEBUG: ${APP_DEBUG:-0}
+      APP_ENV: ${DOCKER_APP_ENV:-prod}
+      APP_DEBUG: ${DOCKER_APP_DEBUG:-0}
       APP_SECRET: ${APP_SECRET:-change-me-for-prod}
       APP_SHARE_DIR: ${APP_SHARE_DIR:-var/share}
       APP_2FA_ISSUER: ${APP_2FA_ISSUER:-Client Secrets Vault}
       VAULT_ENCRYPTION_KEY: ${VAULT_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
-      CHILD_APP_PROVISIONING_TOKEN: ${CHILD_APP_PROVISIONING_TOKEN:-change-this-provisioning-token}
       SYMFONY_TRUSTED_PROXIES: ${SYMFONY_TRUSTED_PROXIES:-private_ranges}
       DEFAULT_URI: ${DEFAULT_URI:-https://secret-vault.dsn-dev.com}
-      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/var/data_prod.db}
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-!ChangeMe!}@database:5432/${POSTGRES_DB:-client_secret_vault}?serverVersion=16&charset=utf8}
       MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN:-doctrine://default?auto_setup=0}
       MAILER_DSN: ${MAILER_DSN:-null://null}
     networks:
       - edge
+      - backend
     volumes:
       - vault_var:/app/var
     command: [ "php", "bin/console", "messenger:consume", "async", "--time-limit=3600", "--memory-limit=256M" ]
     restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "tr '\\0' ' ' </proc/1/cmdline | grep -q 'messenger:consume'"]
       interval: 30s
       timeout: 10s
       retries: 5
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-client_secret_vault}
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-!ChangeMe!}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-client_secret_vault}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
 volumes:
   vault_var:
+  postgres_data:
   caddy_data:
   caddy_config:
 
 networks:
+  backend:
   edge:
     external: true
     name: ${SHARED_EDGE_NETWORK:-saas-edge}
