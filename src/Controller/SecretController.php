@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Audit\AuditLogger;
+use App\Entity\AuditLog;
 use App\Entity\Project;
 use App\Entity\Secret;
 use App\Entity\User;
+use App\Form\SecretRevealType;
 use App\Form\SecretType;
+use App\Security\SecretRevealGate;
 use App\Security\SecretVoter;
 use App\Secrets\SecretPayloadCodec;
 use App\Secrets\SecretTypeRegistry;
@@ -17,6 +21,7 @@ use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Scheb\TwoFactorBundle\Security\TwoFactor\Provider\Totp\TotpAuthenticatorInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[IsGranted('IS_AUTHENTICATED_FULLY')]
@@ -25,8 +30,10 @@ final class SecretController extends AbstractController
     public function __construct(
         private readonly SecretPayloadCodec $payloadCodec,
         private readonly SecretTypeRegistry $secretTypes,
-    )
-    {
+        private readonly AuditLogger $auditLogger,
+        private readonly SecretRevealGate $revealGate,
+        private readonly TotpAuthenticatorInterface $totpAuthenticator,
+    ) {
     }
 
     #[Route('/projects/{id}/secrets/new', name: 'app_secret_new', methods: ['GET', 'POST'])]
@@ -58,6 +65,9 @@ final class SecretController extends AbstractController
             $project->addSecret($secret);
             $em->persist($secret);
             $em->flush();
+            $this->auditLogger->logSecretEvent(AuditLog::EVENT_SECRET_CREATED, $secret, $this->getCurrentUser(), $request, [
+                'type' => $requestedType,
+            ]);
 
             $this->addFlash('success', 'Secret ajouté.');
 
@@ -88,6 +98,9 @@ final class SecretController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             $this->hydrateEncryptedFields($secret, $form, $secretType);
             $em->flush();
+            $this->auditLogger->logSecretEvent(AuditLog::EVENT_SECRET_UPDATED, $secret, $this->getCurrentUser(), $request, [
+                'type' => $secretType,
+            ]);
 
             $this->addFlash('success', 'Secret mis à jour.');
 
@@ -101,6 +114,60 @@ final class SecretController extends AbstractController
             'secretDefinition' => $this->secretTypes->get($secretType),
             'secretType' => $secretType,
         ]);
+    }
+
+    #[Route('/projects/secret/{id}/reveal', name: 'app_secret_reveal', methods: ['POST'])]
+    #[IsGranted(SecretVoter::VIEW, subject: 'secret')]
+    public function reveal(Request $request, Secret $secret): Response
+    {
+        $user = $this->getCurrentUser();
+        $projectId = $secret->getProject()?->getIdString();
+
+        if ($this->revealGate->isGranted($request->getSession(), $secret)) {
+            return $this->redirectToRoute('app_project_show', ['id' => $projectId]);
+        }
+
+        if (!$user->isTotpAuthenticationEnabled()) {
+            $this->addFlash('error', 'Activez le TOTP avant de révéler un secret.');
+
+            return $this->redirectToRoute('app_2fa_setup');
+        }
+
+        $form = $this->createForm(SecretRevealType::class);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $code = (string) $form->get('code')->getData();
+            if ($this->totpAuthenticator->checkCode($user, $code)) {
+                $expiresAt = $this->revealGate->grant($request->getSession(), $secret);
+                $this->auditLogger->logSecretEvent(AuditLog::EVENT_SECRET_REVEAL_GRANTED, $secret, $user, $request, [
+                    'expires_at' => $expiresAt->format(DATE_ATOM),
+                ]);
+                $this->addFlash('success', sprintf('Secret visible pendant %d secondes.', $this->revealGate->ttlSeconds()));
+
+                return $this->redirectToRoute('app_project_show', ['id' => $projectId]);
+            }
+
+            $this->addFlash('error', 'Le code TOTP est invalide.');
+        }
+
+        return $this->redirectToRoute('app_project_show', [
+            'id' => $projectId,
+            'reveal' => $secret->getIdString(),
+        ]);
+    }
+
+    #[Route('/projects/secret/{id}/copy-log', name: 'app_secret_copy_log', methods: ['POST'])]
+    #[IsGranted(SecretVoter::VIEW, subject: 'secret')]
+    public function logCopy(Request $request, Secret $secret): Response
+    {
+        if (!$request->isXmlHttpRequest() || !$this->revealGate->isGranted($request->getSession(), $secret)) {
+            return new Response(status: Response::HTTP_NO_CONTENT);
+        }
+
+        $this->auditLogger->logSecretEvent(AuditLog::EVENT_SECRET_COPIED, $secret, $this->getCurrentUser(), $request);
+
+        return new Response(status: Response::HTTP_NO_CONTENT);
     }
 
     private function hydrateEncryptedFields(Secret $secret, FormInterface $form, string $secretType): void
@@ -121,9 +188,10 @@ final class SecretController extends AbstractController
 
         $secret
             ->setType($secretType)
-            ->setPayloadEncrypted($this->payloadCodec->encode($payload))
             ->setPublicSecretEncrypted(null)
             ->setPrivateSecretEncrypted(null);
+
+        $this->payloadCodec->encodeIntoSecret($secret, $payload);
     }
 
     private function denyUnlessCanCreateSecret(Project $project): void

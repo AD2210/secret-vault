@@ -2,6 +2,9 @@ import { Controller } from '@hotwired/stimulus';
 
 export default class extends Controller {
     static targets = ['source', 'button'];
+    static values = {
+        logUrl: String,
+    };
 
     async copy() {
         const value = this.sourceTarget.textContent?.trim() ?? '';
@@ -11,10 +14,25 @@ export default class extends Controller {
 
         try {
             await navigator.clipboard.writeText(value);
+            this.logCopy();
             this.flashState('Copié', true);
         } catch (error) {
             this.flashState('Échec', false);
         }
+    }
+
+    logCopy() {
+        if (!this.hasLogUrlValue || '' === this.logUrlValue) {
+            return;
+        }
+
+        void fetch(this.logUrlValue, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
     }
 
     flashState(label, success) {

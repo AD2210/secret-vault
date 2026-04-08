@@ -17,13 +17,21 @@ final readonly class SecretPayloadCodec
     /**
      * @param array<string, scalar> $payload
      */
-    public function encode(array $payload): ?string
+    public function encodeIntoSecret(Secret $secret, array $payload): void
     {
         if ([] === $payload) {
-            return null;
+            $secret
+                ->setPayloadEncrypted(null)
+                ->setEncryptionKeyVersion(null);
+
+            return;
         }
 
-        return $this->cipher->encrypt(json_encode($payload, JSON_THROW_ON_ERROR));
+        $encrypted = $this->cipher->encrypt(json_encode($payload, JSON_THROW_ON_ERROR));
+
+        $secret
+            ->setPayloadEncrypted($encrypted->getPayload())
+            ->setEncryptionKeyVersion($encrypted->getKeyId());
     }
 
     /**
@@ -31,7 +39,7 @@ final readonly class SecretPayloadCodec
      */
     public function decode(Secret $secret): array
     {
-        $payload = $this->cipher->decrypt($secret->getPayloadEncrypted());
+        $payload = $this->cipher->decrypt($secret->getPayloadEncrypted(), $secret->getEncryptionKeyVersion());
         if (is_string($payload) && '' !== $payload) {
             try {
                 /** @var array<string, scalar|null> $decoded */
@@ -46,8 +54,42 @@ final readonly class SecretPayloadCodec
         }
 
         return array_filter([
-            'secret_value' => $this->cipher->decrypt($secret->getPrivateSecretEncrypted()),
-            'notes' => $this->cipher->decrypt($secret->getPublicSecretEncrypted()),
+            'secret_value' => $this->cipher->decrypt($secret->getPrivateSecretEncrypted(), $secret->getEncryptionKeyVersion()),
+            'notes' => $this->cipher->decrypt($secret->getPublicSecretEncrypted(), $secret->getEncryptionKeyVersion()),
         ], static fn (?string $value): bool => null !== $value && '' !== $value);
+    }
+
+    public function rotate(Secret $secret): bool
+    {
+        $rotated = false;
+
+        if ($this->cipher->needsRotation($secret->getPayloadEncrypted(), $secret->getEncryptionKeyVersion())) {
+            $payload = $this->cipher->decrypt($secret->getPayloadEncrypted(), $secret->getEncryptionKeyVersion());
+            $encrypted = $this->cipher->encrypt($payload);
+            $secret
+                ->setPayloadEncrypted($encrypted->getPayload())
+                ->setEncryptionKeyVersion($encrypted->getKeyId());
+            $rotated = true;
+        }
+
+        if ($this->cipher->needsRotation($secret->getPublicSecretEncrypted(), $secret->getEncryptionKeyVersion())) {
+            $publicValue = $this->cipher->decrypt($secret->getPublicSecretEncrypted(), $secret->getEncryptionKeyVersion());
+            $encrypted = $this->cipher->encrypt($publicValue);
+            $secret
+                ->setPublicSecretEncrypted($encrypted->getPayload())
+                ->setEncryptionKeyVersion($encrypted->getKeyId());
+            $rotated = true;
+        }
+
+        if ($this->cipher->needsRotation($secret->getPrivateSecretEncrypted(), $secret->getEncryptionKeyVersion())) {
+            $privateValue = $this->cipher->decrypt($secret->getPrivateSecretEncrypted(), $secret->getEncryptionKeyVersion());
+            $encrypted = $this->cipher->encrypt($privateValue);
+            $secret
+                ->setPrivateSecretEncrypted($encrypted->getPayload())
+                ->setEncryptionKeyVersion($encrypted->getKeyId());
+            $rotated = true;
+        }
+
+        return $rotated;
     }
 }

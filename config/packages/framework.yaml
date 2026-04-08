@@ -4,8 +4,13 @@ framework:
     trusted_proxies: '%env(string:SYMFONY_TRUSTED_PROXIES)%'
     trusted_headers: ['x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto', 'x-forwarded-port', 'x-forwarded-prefix']
 
-    # Note that the session will be started ONLY if you read or write from it.
-    session: true
+    session:
+        cookie_httponly: true
+        cookie_lifetime: 0
+        cookie_samesite: lax
+        cookie_secure: auto
+        gc_maxlifetime: 1800
+        metadata_update_threshold: 60
 
     #esi: true
     #fragments: true

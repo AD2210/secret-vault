@@ -66,40 +66,86 @@
                 <div class="list">
                     {% for secret in project.secrets %}
                         {% set definition = secretTypes[secret.type] ?? secretTypes['other'] %}
+                        {% set isRevealed = revealedSecrets[secret.idString] ?? false %}
                         {% set payload = secretPayloads[secret.idString] ?? {} %}
-                        <div class="list-item">
-                            <div class="actions" style="justify-content: space-between; align-items: flex-start; gap: 24px;">
-                                <div>
-                                    <strong>{{ secret.name }}</strong>
-                                    <div class="badge" style="margin: 12px 0;">{{ definition.label }}</div>
-                                    <div class="help">Créé par {{ secret.createdBy ? secret.createdBy.displayName : 'n/a' }}</div>
-                                    <div class="grid" style="margin-top: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
-                                        {% for field in definition.fields %}
-                                            {% set fieldValue = attribute(payload, field.key) ?: '' %}
-                                            {% set singleLine = fieldValue and "\n" not in fieldValue and "\r" not in fieldValue %}
-                                            <div>
-                                                <div class="help">{{ field.label }}</div>
-                                                <div class="generator-result__card" data-controller="copy-value">
-                                                    <div class="generator-result__value{{ singleLine ? ' generator-result__value--single-line' : '' }}">
-                                                        <div class="secret-box" data-copy-value-target="source">{{ fieldValue ?: 'Aucune valeur' }}</div>
-                                                        {% if fieldValue %}
-                                                            <button type="button" class="generator-result__copy" title="Copier" aria-label="Copier" data-copy-value-target="button" data-action="click->copy-value#copy">
-                                                                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                                                    <rect x="9" y="9" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.7"/>
-                                                                    <path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-                                                                </svg>
-                                                                <span class="sr-only">Copier</span>
-                                                            </button>
-                                                        {% endif %}
+                        <div
+                            data-controller="modal{% if isRevealed %} secret-visibility{% endif %}"
+                            data-modal-open-class="is-open"
+                            data-modal-open="{{ openRevealSecretId == secret.idString ? 'true' : 'false' }}"
+                            {% if isRevealed %}
+                                data-secret-visibility-expires-at-value="{{ revealExpirations[secret.idString]|date('c') }}"
+                                data-secret-visibility-reveal-label-value="Révéler 60s"
+                            {% endif %}
+                        >
+                            <div class="list-item">
+                                <div class="actions" style="justify-content: space-between; align-items: flex-start; gap: 24px;">
+                                    <div>
+                                        <strong>{{ secret.name }}</strong>
+                                        <div class="badge" style="margin: 12px 0;">{{ definition.label }}</div>
+                                        <div class="help">Créé par {{ secret.createdBy ? secret.createdBy.displayName : 'n/a' }}</div>
+                                        {% if isRevealed %}
+                                            <div class="security-note" data-secret-visibility-target="note">Visible jusqu’à {{ revealExpirations[secret.idString]|date('H:i:s') }}</div>
+                                        {% else %}
+                                            <div class="security-note">Masqué par défaut. Une validation TOTP ouvre une fenêtre de consultation courte.</div>
+                                        {% endif %}
+                                        <div class="grid" style="margin-top: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+                                            {% for field in definition.fields %}
+                                                {% set fieldValue = isRevealed ? (attribute(payload, field.key) ?: '') : '' %}
+                                                {% set singleLine = fieldValue and "\n" not in fieldValue and "\r" not in fieldValue %}
+                                                <div>
+                                                    <div class="help">{{ field.label }}</div>
+                                                    <div class="generator-result__card" data-controller="copy-value"{% if isRevealed %} data-copy-value-log-url-value="{{ path('app_secret_copy_log', {id: secret.idString}) }}"{% endif %}>
+                                                        <div class="generator-result__value{{ singleLine ? ' generator-result__value--single-line' : '' }}">
+                                                            <div class="secret-box{{ isRevealed ? '' : ' secret-box--masked' }}" data-copy-value-target="source"{% if isRevealed %} data-secret-visibility-target="source"{% endif %}>{{ isRevealed ? (fieldValue ?: 'Aucune valeur') : '••••••••••' }}</div>
+                                                            {% if isRevealed and fieldValue %}
+                                                                <button type="button" class="generator-result__copy" title="Copier" aria-label="Copier" data-copy-value-target="button" data-secret-visibility-target="copyButton" data-action="click->copy-value#copy">
+                                                                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                                        <rect x="9" y="9" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.7"/>
+                                                                        <path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                                                                    </svg>
+                                                                    <span class="sr-only">Copier</span>
+                                                                </button>
+                                                            {% endif %}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        {% endfor %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="actions">
+                                        <button type="button" class="button button--ghost" data-action="click->modal#open"{% if isRevealed %} data-secret-visibility-target="trigger"{% endif %}>{{ isRevealed ? 'Prolonger' : 'Révéler 60s' }}</button>
+                                        {% if is_granted('SECRET_EDIT', secret) %}
+                                            <a class="button button--ghost" href="{{ path('app_secret_edit', {id: secret.idString}) }}">Modifier</a>
+                                        {% endif %}
                                     </div>
                                 </div>
-                                {% if is_granted('SECRET_EDIT', secret) %}
-                                    <a class="button button--ghost" href="{{ path('app_secret_edit', {id: secret.idString}) }}">Modifier</a>
-                                {% endif %}
+                            </div>
+                            <div
+                                class="modal{% if openRevealSecretId == secret.idString %} is-open{% endif %}"
+                                data-modal-target="overlay"
+                                data-action="click->modal#closeOnBackdrop keydown@window->modal#closeOnEscape"
+                            >
+                                <div class="modal__panel" data-modal-target="panel" role="dialog" aria-modal="true" aria-labelledby="reveal-title-{{ secret.idString }}">
+                                    <div class="modal__head">
+                                        <div>
+                                            <div class="badge">Accès sensible</div>
+                                            <h3 id="reveal-title-{{ secret.idString }}">{{ secret.name }}</h3>
+                                            <p class="help">Validation TOTP requise pour ouvrir une fenêtre de consultation courte.</p>
+                                        </div>
+                                        <button type="button" class="modal__close" aria-label="Fermer" data-action="click->modal#close">×</button>
+                                    </div>
+                                    {{ form_start(revealForms[secret.idString], {attr: {class: 'stack'}}) }}
+                                        <div class="field">
+                                            {{ form_label(revealForms[secret.idString].code) }}
+                                            {{ form_widget(revealForms[secret.idString].code) }}
+                                            {{ form_errors(revealForms[secret.idString].code) }}
+                                        </div>
+                                        <div class="actions">
+                                            <button type="submit">Valider et révéler</button>
+                                            <button type="button" class="button button--ghost" data-action="click->modal#close">Annuler</button>
+                                        </div>
+                                    {{ form_end(revealForms[secret.idString]) }}
+                                </div>
                             </div>
                         </div>
                     {% endfor %}

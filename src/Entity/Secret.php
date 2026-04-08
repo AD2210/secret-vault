@@ -41,6 +41,9 @@ class Secret
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $payloadEncrypted = null;
 
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $encryptionKeyVersion = null;
+
     #[ORM\ManyToOne(targetEntity: Project::class, inversedBy: 'secrets')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Project $project = null;
@@ -134,6 +137,18 @@ class Secret
     public function setPayloadEncrypted(?string $payloadEncrypted): static
     {
         $this->payloadEncrypted = $payloadEncrypted;
+
+        return $this;
+    }
+
+    public function getEncryptionKeyVersion(): ?string
+    {
+        return $this->encryptionKeyVersion;
+    }
+
+    public function setEncryptionKeyVersion(?string $encryptionKeyVersion): static
+    {
+        $this->encryptionKeyVersion = null !== $encryptionKeyVersion ? trim($encryptionKeyVersion) : null;
 
         return $this;
     }

@@ -13,6 +13,8 @@ parameters:
         - app_2fa_setup
         - 2fa_login
         - 2fa_login_check
+    app.security.secret_reveal_ttl: 60
+    app.security.alert_recipients: '%env(csv:SECURITY_ALERT_RECIPIENTS)%'
 
 services:
     # default configuration for services in *this* file

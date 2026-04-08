@@ -10,10 +10,12 @@ use App\Entity\User;
 use App\Form\InvitationRegistrationType;
 use App\Form\ProjectMembersType;
 use App\Form\ProjectType;
+use App\Form\SecretRevealType;
 use App\Repository\ProjectAccessInvitationRepository;
 use App\Repository\ProjectRepository;
 use App\Repository\UserRepository;
 use App\Security\ProjectVoter;
+use App\Security\SecretRevealGate;
 use App\Secrets\SecretPayloadCodec;
 use App\Secrets\SecretTypeRegistry;
 use Doctrine\ORM\EntityManagerInterface;
@@ -34,6 +36,7 @@ final class ProjectController extends AbstractController
         private readonly MailerInterface $mailer,
         private readonly SecretPayloadCodec $payloadCodec,
         private readonly SecretTypeRegistry $secretTypes,
+        private readonly SecretRevealGate $revealGate,
     ) {
     }
 
@@ -194,11 +197,25 @@ final class ProjectController extends AbstractController
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
     #[Route('/projects/{id}', name: 'app_project_show', methods: ['GET'])]
     #[IsGranted(ProjectVoter::VIEW, subject: 'project')]
-    public function show(Project $project, UserRepository $users): Response
+    public function show(Request $request, Project $project, UserRepository $users): Response
     {
         $secretPayloads = [];
+        $revealedSecrets = [];
+        $revealExpirations = [];
+        $revealForms = [];
+        $openRevealSecretId = trim((string) $request->query->get('reveal', ''));
         foreach ($project->getSecrets() as $secret) {
-            $secretPayloads[$secret->getIdString()] = $this->payloadCodec->decode($secret);
+            $secretId = $secret->getIdString();
+            $revealedSecrets[$secretId] = $this->revealGate->isGranted($request->getSession(), $secret);
+            if ($revealedSecrets[$secretId]) {
+                $secretPayloads[$secretId] = $this->payloadCodec->decode($secret);
+                $revealExpirations[$secretId] = $this->revealGate->expiresAt($request->getSession(), $secret);
+            }
+
+            $revealForms[$secretId] = $this->createForm(SecretRevealType::class, null, [
+                'action' => $this->generateUrl('app_secret_reveal', ['id' => $secretId]),
+                'method' => 'POST',
+            ])->createView();
         }
 
         $membersForm = null;
@@ -214,6 +231,10 @@ final class ProjectController extends AbstractController
             'secretPayloads' => $secretPayloads,
             'secretTypes' => $this->secretTypes->all(),
             'membersForm' => $membersForm,
+            'revealedSecrets' => $revealedSecrets,
+            'revealExpirations' => $revealExpirations,
+            'revealForms' => $revealForms,
+            'openRevealSecretId' => $openRevealSecretId,
         ]);
     }
 
