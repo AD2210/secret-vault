@@ -75,9 +75,24 @@
                                     <div class="help">Créé par {{ secret.createdBy ? secret.createdBy.displayName : 'n/a' }}</div>
                                     <div class="grid" style="margin-top: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
                                         {% for field in definition.fields %}
+                                            {% set fieldValue = attribute(payload, field.key) ?: '' %}
+                                            {% set singleLine = fieldValue and "\n" not in fieldValue and "\r" not in fieldValue %}
                                             <div>
                                                 <div class="help">{{ field.label }}</div>
-                                                <div class="secret-box">{{ attribute(payload, field.key) ?: 'Aucune valeur' }}</div>
+                                                <div class="generator-result__card" data-controller="copy-value">
+                                                    <div class="generator-result__value{{ singleLine ? ' generator-result__value--single-line' : '' }}">
+                                                        <div class="secret-box" data-copy-value-target="source">{{ fieldValue ?: 'Aucune valeur' }}</div>
+                                                        {% if fieldValue %}
+                                                            <button type="button" class="generator-result__copy" title="Copier" aria-label="Copier" data-copy-value-target="button" data-action="click->copy-value#copy">
+                                                                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                                    <rect x="9" y="9" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.7"/>
+                                                                    <path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                                                                </svg>
+                                                                <span class="sr-only">Copier</span>
+                                                            </button>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
                                             </div>
                                         {% endfor %}
                                     </div>
