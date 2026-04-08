@@ -2,7 +2,7 @@
 
 {% block title %}{{ title }} | Client Secrets Vault{% endblock %}
 {% block page_title %}{{ title }}{% endblock %}
-{% block page_intro %}Les utilisateurs créés devront configurer leur TOTP à la première connexion.{% endblock %}
+{% block page_intro %}Définis le rôle métier et les projets affectés à cet utilisateur.{% endblock %}
 
 {% block body %}
     <section class="panel">
@@ -12,8 +12,9 @@
                 <div class="field">{{ form_label(form.firstName) }}{{ form_widget(form.firstName) }}{{ form_errors(form.firstName) }}</div>
                 <div class="field">{{ form_label(form.lastName) }}{{ form_widget(form.lastName) }}{{ form_errors(form.lastName) }}</div>
                 <div class="field">{{ form_label(form.isActive) }}{{ form_widget(form.isActive) }}{{ form_errors(form.isActive) }}</div>
+                <div class="field">{{ form_label(form.role) }}{{ form_widget(form.role) }}{{ form_errors(form.role) }}</div>
                 <div class="field-wide">{{ form_label(form.plainPassword) }}{{ form_widget(form.plainPassword) }}{{ form_errors(form.plainPassword) }}</div>
-                <div class="field">{{ form_label(form.is_admin) }}{{ form_widget(form.is_admin) }}{{ form_errors(form.is_admin) }}</div>
+                <div class="field-wide">{{ form_label(form.projects) }}{{ form_widget(form.projects) }}{{ form_errors(form.projects) }}</div>
                 <div class="field">{{ form_label(form.reset_totp) }}{{ form_widget(form.reset_totp) }}{{ form_errors(form.reset_totp) }}</div>
             </div>
             <div class="actions">

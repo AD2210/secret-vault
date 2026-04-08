@@ -47,4 +47,23 @@ final class ProjectRepository extends ServiceEntityRepository
     {
         return count($this->findAccessibleByUser($user));
     }
+
+    /**
+     * @return list<Project>
+     */
+    public function findManageableByUser(User $user): array
+    {
+        if ($user->isAdmin()) {
+            return $this->createQueryBuilder('p')
+                ->orderBy('p.client', 'ASC')
+                ->addOrderBy('p.name', 'ASC')
+                ->getQuery()
+                ->getResult();
+        }
+
+        return array_values(array_filter(
+            $this->findAccessibleByUser($user),
+            static fn (Project $project): bool => $project->isManageableBy($user),
+        ));
+    }
 }

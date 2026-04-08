@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Form;
 
 use App\Entity\User;
+use Symfony\Bridge\Doctrine\Form\Type\EntityType;
+use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
@@ -45,16 +47,33 @@ final class UserType extends AbstractType
                     'attr' => ['autocomplete' => 'new-password'],
                 ],
             ])
-            ->add('is_admin', CheckboxType::class, [
-                'label' => 'Administrateur',
+            ->add('role', ChoiceType::class, [
+                'label' => 'Rôle',
                 'mapped' => false,
-                'required' => false,
-                'data' => (bool) $options['is_admin'],
+                'choices' => array_flip($options['role_choices']),
+                'data' => $options['current_role'],
             ])
             ->add('reset_totp', CheckboxType::class, [
                 'label' => 'Réinitialiser le 2FA',
                 'mapped' => false,
                 'required' => false,
+            ])
+            ->add('projects', EntityType::class, [
+                'class' => \App\Entity\Project::class,
+                'choice_label' => static fn (\App\Entity\Project $project): string => sprintf('%s · %s', $project->getName(), $project->getClient()),
+                'choices' => $options['project_choices'],
+                'data' => $options['selected_projects'],
+                'label' => 'Projets affectés',
+                'mapped' => false,
+                'multiple' => true,
+                'required' => false,
+                'by_reference' => false,
+                'attr' => [
+                    'data-controller' => 'relation-picker',
+                    'data-relation-picker-placeholder-value' => 'Rechercher un projet...',
+                    'data-relation-picker-empty-label-value' => 'Aucun projet disponible.',
+                    'data-relation-picker-selected-label-value' => 'Aucun projet affecté.',
+                ],
             ]);
     }
 
@@ -63,9 +82,15 @@ final class UserType extends AbstractType
         $resolver->setDefaults([
             'data_class' => User::class,
             'require_password' => true,
-            'is_admin' => false,
+            'role_choices' => User::roleLabels(),
+            'current_role' => User::ROLE_USER,
+            'project_choices' => [],
+            'selected_projects' => [],
         ]);
         $resolver->setAllowedTypes('require_password', 'bool');
-        $resolver->setAllowedTypes('is_admin', 'bool');
+        $resolver->setAllowedTypes('role_choices', 'array');
+        $resolver->setAllowedTypes('current_role', 'string');
+        $resolver->setAllowedTypes('project_choices', 'array');
+        $resolver->setAllowedTypes('selected_projects', 'array');
     }
 }

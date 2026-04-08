@@ -2,7 +2,7 @@
 
 {% block title %}{{ title }} | Client Secrets Vault{% endblock %}
 {% block page_title %}{{ title }}{% endblock %}
-{% block page_intro %}Les champs sensibles sont chiffrés applicativement avant persistance en base.{% endblock %}
+{% block page_intro %}Le projet ne stocke ici que son cadre métier et les affectations d’équipe.{% endblock %}
 
 {% block body %}
     <section class="panel">
@@ -10,19 +10,6 @@
             <div class="form-grid">
                 <div class="field">{{ form_label(form.name) }}{{ form_widget(form.name) }}{{ form_errors(form.name) }}</div>
                 <div class="field">{{ form_label(form.client) }}{{ form_widget(form.client) }}{{ form_errors(form.client) }}</div>
-                <div class="field">{{ form_label(form.domain) }}{{ form_widget(form.domain) }}{{ form_errors(form.domain) }}</div>
-                <div class="field">{{ form_label(form.serverIp) }}{{ form_widget(form.serverIp) }}{{ form_errors(form.serverIp) }}</div>
-                <div class="field">{{ form_label(form.serverUser) }}{{ form_widget(form.serverUser) }}{{ form_errors(form.serverUser) }}</div>
-                <div class="field">{{ form_label(form.sshPort) }}{{ form_widget(form.sshPort) }}{{ form_errors(form.sshPort) }}</div>
-                <div class="field-wide">{{ form_label(form.members) }}{{ form_widget(form.members) }}{{ form_errors(form.members) }}</div>
-                <div class="field-wide">{{ form_label(form.inviteEmail) }}{{ form_widget(form.inviteEmail) }}{{ form_help(form.inviteEmail) }}{{ form_errors(form.inviteEmail) }}</div>
-                <div class="field-wide">{{ form_label(form.sshPublicKey) }}{{ form_widget(form.sshPublicKey) }}{{ form_errors(form.sshPublicKey) }}</div>
-                <div class="field-wide">{{ form_label(form.sshPrivateKey) }}{{ form_widget(form.sshPrivateKey) }}{{ form_errors(form.sshPrivateKey) }}</div>
-                <div class="field-wide">{{ form_label(form.serverPassword) }}{{ form_widget(form.serverPassword) }}{{ form_errors(form.serverPassword) }}</div>
-                <div class="field-wide">{{ form_label(form.appSecret) }}{{ form_widget(form.appSecret) }}{{ form_errors(form.appSecret) }}</div>
-                <div class="field">{{ form_label(form.dbName) }}{{ form_widget(form.dbName) }}{{ form_errors(form.dbName) }}</div>
-                <div class="field">{{ form_label(form.dbUser) }}{{ form_widget(form.dbUser) }}{{ form_errors(form.dbUser) }}</div>
-                <div class="field-wide">{{ form_label(form.dbPassword) }}{{ form_widget(form.dbPassword) }}{{ form_errors(form.dbPassword) }}</div>
             </div>
             <div class="actions">
                 <button type="submit">Enregistrer</button>
@@ -41,48 +28,4 @@
         </section>
     {% endif %}
 
-    {% if app.request.attributes.get('_route') == 'app_project_edit' %}
-        <section class="panel">
-            <h3>Accès au projet</h3>
-            <p class="muted">Les membres déjà inscrits se gèrent dans le champ “Membres autorisés”. Pour un nouvel accès, utilise “Inviter par email”, puis valide la demande ici après confirmation du destinataire.</p>
-
-            {% if pendingInvitations is defined and pendingInvitations is not empty %}
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Email</th>
-                            <th>Statut</th>
-                            <th>Expire le</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for invitation in pendingInvitations %}
-                            <tr>
-                                <td>{{ invitation.email }}</td>
-                                <td>{{ invitation.statusLabel }}</td>
-                                <td>{{ invitation.expiresAt|date('d/m/Y H:i') }}</td>
-                                <td class="inline-actions">
-                                    {% if not invitation.approved and invitation.recipientConfirmedAt and (app.user and (app.user.idString == project.createdBy.idString or is_granted('ROLE_ADMIN'))) %}
-                                        <form method="post" action="{{ path('app_project_invitation_approve', {id: project.idString, invitation: invitation.idString}) }}">
-                                            <input type="hidden" name="_token" value="{{ csrf_token('approve-invitation-' ~ invitation.idString) }}">
-                                            <button class="button button--ghost" type="submit">Valider</button>
-                                        </form>
-                                    {% endif %}
-                                    {% if not invitation.revokedAt and not invitation.acceptedAt and (app.user and (app.user.idString == project.createdBy.idString or is_granted('ROLE_ADMIN'))) %}
-                                        <form method="post" action="{{ path('app_project_invitation_revoke', {id: project.idString, invitation: invitation.idString}) }}">
-                                            <input type="hidden" name="_token" value="{{ csrf_token('revoke-invitation-' ~ invitation.idString) }}">
-                                            <button class="button button--ghost" type="submit">Révoquer</button>
-                                        </form>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            {% else %}
-                <div class="empty-state">Aucune invitation en attente pour ce projet.</div>
-            {% endif %}
-        </section>
-    {% endif %}
 {% endblock %}

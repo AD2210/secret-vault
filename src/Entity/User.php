@@ -21,6 +21,18 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\HasLifecycleCallbacks]
 class User implements UserInterface, PasswordAuthenticatedUserInterface, TotpTwoFactorInterface
 {
+    public const string ROLE_ADMIN = 'ROLE_ADMIN';
+    public const string ROLE_LEAD = 'ROLE_LEAD';
+    public const string ROLE_EDITOR = 'ROLE_EDITOR';
+    public const string ROLE_USER = 'ROLE_USER';
+
+    private const array BUSINESS_ROLES = [
+        self::ROLE_ADMIN,
+        self::ROLE_LEAD,
+        self::ROLE_EDITOR,
+        self::ROLE_USER,
+    ];
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid', unique: true)]
     private Uuid $id;
@@ -151,7 +163,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TotpTwo
     public function getRoles(): array
     {
         $roles = $this->roles;
-        $roles[] = 'ROLE_USER';
+        $roles[] = self::ROLE_USER;
 
         return array_values(array_unique($roles));
     }
@@ -166,9 +178,79 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TotpTwo
         return $this;
     }
 
+    public function getPrimaryRole(): string
+    {
+        foreach (self::BUSINESS_ROLES as $role) {
+            if (in_array($role, $this->roles, true)) {
+                return $role;
+            }
+        }
+
+        return self::ROLE_USER;
+    }
+
+    public function setPrimaryRole(string $role): static
+    {
+        if (!in_array($role, self::BUSINESS_ROLES, true)) {
+            throw new \InvalidArgumentException(sprintf('Unsupported role "%s".', $role));
+        }
+
+        $this->roles = [$role];
+
+        return $this;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function roleLabels(): array
+    {
+        return [
+            self::ROLE_ADMIN => 'Admin',
+            self::ROLE_LEAD => 'Lead',
+            self::ROLE_EDITOR => 'Editeur',
+            self::ROLE_USER => 'User',
+        ];
+    }
+
+    public function getRoleLabel(): string
+    {
+        return self::roleLabels()[$this->getPrimaryRole()] ?? 'User';
+    }
+
     public function isAdmin(): bool
     {
-        return in_array('ROLE_ADMIN', $this->getRoles(), true);
+        return self::ROLE_ADMIN === $this->getPrimaryRole();
+    }
+
+    public function isLead(): bool
+    {
+        return self::ROLE_LEAD === $this->getPrimaryRole();
+    }
+
+    public function isEditor(): bool
+    {
+        return self::ROLE_EDITOR === $this->getPrimaryRole();
+    }
+
+    public function isStandardUser(): bool
+    {
+        return self::ROLE_USER === $this->getPrimaryRole();
+    }
+
+    public function canManageUsers(): bool
+    {
+        return $this->isAdmin() || $this->isLead();
+    }
+
+    public function canCreateProjects(): bool
+    {
+        return $this->isAdmin() || $this->isLead();
+    }
+
+    public function canCreateSecrets(): bool
+    {
+        return $this->isAdmin() || $this->isLead() || $this->isEditor();
     }
 
     public function getPassword(): string
@@ -252,6 +334,25 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TotpTwo
     public function getProjects(): Collection
     {
         return $this->projects;
+    }
+
+    public function addProject(Project $project): static
+    {
+        if (!$this->projects->contains($project)) {
+            $this->projects->add($project);
+            $project->addMember($this);
+        }
+
+        return $this;
+    }
+
+    public function removeProject(Project $project): static
+    {
+        if ($this->projects->removeElement($project)) {
+            $project->removeMember($this);
+        }
+
+        return $this;
     }
 
     /**

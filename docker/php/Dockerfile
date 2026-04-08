@@ -22,9 +22,9 @@ FROM dunglas/frankenphp:1-php8.5
 
 RUN install-php-extensions intl pdo_pgsql pdo_sqlite sodium opcache gd zip
 RUN if command -v apt-get >/dev/null 2>&1; then \
-      apt-get update && apt-get install -y --no-install-recommends unzip p7zip-full && rm -rf /var/lib/apt/lists/* ; \
+      apt-get update && apt-get install -y --no-install-recommends unzip p7zip-full openssh-client && rm -rf /var/lib/apt/lists/* ; \
     elif command -v apk >/dev/null 2>&1; then \
-      apk add --no-cache unzip p7zip ; \
+      apk add --no-cache unzip p7zip openssh-client ; \
     fi
 
 COPY --from=composer_bin /usr/bin/composer /usr/bin/composer

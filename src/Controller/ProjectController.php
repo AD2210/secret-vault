@@ -8,16 +8,17 @@ use App\Entity\Project;
 use App\Entity\ProjectAccessInvitation;
 use App\Entity\User;
 use App\Form\InvitationRegistrationType;
+use App\Form\ProjectMembersType;
 use App\Form\ProjectType;
 use App\Repository\ProjectAccessInvitationRepository;
 use App\Repository\ProjectRepository;
 use App\Repository\UserRepository;
 use App\Security\ProjectVoter;
-use App\Security\VaultCipher;
+use App\Secrets\SecretPayloadCodec;
+use App\Secrets\SecretTypeRegistry;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mailer\MailerInterface;
@@ -30,8 +31,9 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 final class ProjectController extends AbstractController
 {
     public function __construct(
-        private readonly VaultCipher $cipher,
         private readonly MailerInterface $mailer,
+        private readonly SecretPayloadCodec $payloadCodec,
+        private readonly SecretTypeRegistry $secretTypes,
     ) {
     }
 
@@ -161,18 +163,18 @@ final class ProjectController extends AbstractController
     #[Route('/projects/new', name: 'app_project_new', methods: ['GET', 'POST'])]
     public function new(Request $request, EntityManagerInterface $em): Response
     {
+        if (!$this->getCurrentUser()->canCreateProjects()) {
+            throw $this->createAccessDeniedException();
+        }
+
         $project = new Project();
-        $form = $this->createForm(ProjectType::class, $project, [
-            'plaintext_defaults' => [],
-        ]);
+        $form = $this->createForm(ProjectType::class, $project);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
             $user = $this->getCurrentUser();
             $project->setCreatedBy($user);
             $project->addMember($user);
-            $this->hydrateEncryptedFields($project, $form);
-            $this->handleInviteEmail($form, $project, $user, $em);
 
             $em->persist($project);
             $em->flush();
@@ -192,12 +194,26 @@ final class ProjectController extends AbstractController
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
     #[Route('/projects/{id}', name: 'app_project_show', methods: ['GET'])]
     #[IsGranted(ProjectVoter::VIEW, subject: 'project')]
-    public function show(Project $project): Response
+    public function show(Project $project, UserRepository $users): Response
     {
+        $secretPayloads = [];
+        foreach ($project->getSecrets() as $secret) {
+            $secretPayloads[$secret->getIdString()] = $this->payloadCodec->decode($secret);
+        }
+
+        $membersForm = null;
+        if ($this->isGranted(ProjectVoter::EDIT, $project)) {
+            $membersForm = $this->createForm(ProjectMembersType::class, null, [
+                'member_choices' => $users->findAssignableByManager($this->getCurrentUser()),
+                'selected_members' => $project->getMembers()->toArray(),
+            ])->createView();
+        }
+
         return $this->render('project/show.html.twig', [
             'project' => $project,
-            'plaintext' => $this->decryptProject($project),
-            'secretPlaintexts' => $this->decryptSecrets($project),
+            'secretPayloads' => $secretPayloads,
+            'secretTypes' => $this->secretTypes->all(),
+            'membersForm' => $membersForm,
         ]);
     }
 
@@ -206,16 +222,12 @@ final class ProjectController extends AbstractController
     #[IsGranted(ProjectVoter::EDIT, subject: 'project')]
     public function edit(Request $request, Project $project, EntityManagerInterface $em): Response
     {
-        $form = $this->createForm(ProjectType::class, $project, [
-            'plaintext_defaults' => $this->decryptProject($project),
-        ]);
+        $form = $this->createForm(ProjectType::class, $project);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
             $project->addMember($project->getCreatedBy());
             $project->addMember($this->getCurrentUser());
-            $this->hydrateEncryptedFields($project, $form);
-            $this->handleInviteEmail($form, $project, $this->getCurrentUser(), $em);
             $em->flush();
 
             $this->addFlash('success', 'Projet mis à jour.');
@@ -227,7 +239,6 @@ final class ProjectController extends AbstractController
             'title' => 'Modifier le projet',
             'project' => $project,
             'form' => $form,
-            'pendingInvitations' => $project->getAccessInvitations()->toArray(),
         ]);
     }
 
@@ -246,6 +257,52 @@ final class ProjectController extends AbstractController
         $this->addFlash('success', 'Projet supprimé.');
 
         return $this->redirectToRoute('app_project_index');
+    }
+
+    #[IsGranted('IS_AUTHENTICATED_FULLY')]
+    #[Route('/projects/{id}/members', name: 'app_project_members_update', methods: ['POST'])]
+    #[IsGranted(ProjectVoter::EDIT, subject: 'project')]
+    public function updateMembers(
+        Request $request,
+        Project $project,
+        UserRepository $users,
+        EntityManagerInterface $em,
+    ): Response {
+        $choices = $users->findAssignableByManager($this->getCurrentUser());
+        $form = $this->createForm(ProjectMembersType::class, null, [
+            'member_choices' => $choices,
+            'selected_members' => $project->getMembers()->toArray(),
+        ]);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $selectedMembers = $this->normalizeSelectedUsers(
+                $form->get('members')->getData(),
+                $choices,
+            );
+
+            foreach ($project->getMembers()->toArray() as $member) {
+                if ($project->getCreatedBy()->getId()->equals($member->getId())) {
+                    continue;
+                }
+
+                if (!in_array($member, $selectedMembers, true)) {
+                    $project->removeMember($member);
+                }
+            }
+
+            $project->addMember($project->getCreatedBy());
+            foreach ($selectedMembers as $member) {
+                $project->addMember($member);
+            }
+
+            $em->flush();
+            $this->addFlash('success', 'Affectations projet mises à jour.');
+        } else {
+            $this->addFlash('error', 'Impossible de mettre à jour les affectations du projet.');
+        }
+
+        return $this->redirectToRoute('app_project_show', ['id' => $project->getIdString()]);
     }
 
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
@@ -301,49 +358,6 @@ final class ProjectController extends AbstractController
         return $this->redirectToRoute('app_project_edit', ['id' => $project->getIdString()]);
     }
 
-    /**
-     * @return array<string, string|null>
-     */
-    private function decryptProject(Project $project): array
-    {
-        return [
-            'sshPublicKey' => $this->cipher->decrypt($project->getSshPublicKeyEncrypted()),
-            'sshPrivateKey' => $this->cipher->decrypt($project->getSshPrivateKeyEncrypted()),
-            'serverPassword' => $this->cipher->decrypt($project->getServerPasswordEncrypted()),
-            'appSecret' => $this->cipher->decrypt($project->getAppSecretEncrypted()),
-            'dbName' => $this->cipher->decrypt($project->getDbNameEncrypted()),
-            'dbUser' => $this->cipher->decrypt($project->getDbUserEncrypted()),
-            'dbPassword' => $this->cipher->decrypt($project->getDbPasswordEncrypted()),
-        ];
-    }
-
-    private function hydrateEncryptedFields(Project $project, \Symfony\Component\Form\FormInterface $form): void
-    {
-        $project->setSshPublicKeyEncrypted($this->cipher->encrypt((string) $form->get('sshPublicKey')->getData()));
-        $project->setSshPrivateKeyEncrypted($this->cipher->encrypt((string) $form->get('sshPrivateKey')->getData()));
-        $project->setServerPasswordEncrypted($this->cipher->encrypt((string) $form->get('serverPassword')->getData()));
-        $project->setAppSecretEncrypted($this->cipher->encrypt((string) $form->get('appSecret')->getData()));
-        $project->setDbNameEncrypted($this->cipher->encrypt((string) $form->get('dbName')->getData()));
-        $project->setDbUserEncrypted($this->cipher->encrypt((string) $form->get('dbUser')->getData()));
-        $project->setDbPasswordEncrypted($this->cipher->encrypt((string) $form->get('dbPassword')->getData()));
-    }
-
-    /**
-     * @return array<string, array{publicSecret: string|null, privateSecret: string|null}>
-     */
-    private function decryptSecrets(Project $project): array
-    {
-        $plaintexts = [];
-        foreach ($project->getSecrets() as $secret) {
-            $plaintexts[$secret->getIdString()] = [
-                'publicSecret' => $this->cipher->decrypt($secret->getPublicSecretEncrypted()),
-                'privateSecret' => $this->cipher->decrypt($secret->getPrivateSecretEncrypted()),
-            ];
-        }
-
-        return $plaintexts;
-    }
-
     private function getCurrentUser(): User
     {
         $user = $this->getUser();
@@ -352,51 +366,6 @@ final class ProjectController extends AbstractController
         }
 
         return $user;
-    }
-
-    private function handleInviteEmail(FormInterface $form, Project $project, User $actor, EntityManagerInterface $em): void
-    {
-        $inviteEmail = mb_strtolower(trim((string) $form->get('inviteEmail')->getData()));
-        if ('' === $inviteEmail) {
-            return;
-        }
-
-        foreach ($project->getMembers() as $member) {
-            if ($member->getEmail() === $inviteEmail) {
-                $this->addFlash('error', 'Cet utilisateur a déjà accès au projet.');
-
-                return;
-            }
-        }
-
-        /** @var ProjectAccessInvitationRepository $invitations */
-        $invitations = $em->getRepository(ProjectAccessInvitation::class);
-        if ($invitations->hasPendingInvitation($project, $inviteEmail)) {
-            $this->addFlash('error', 'Une invitation en cours existe déjà pour cet email.');
-
-            return;
-        }
-
-        $plainToken = bin2hex(random_bytes(32));
-        $invitation = new ProjectAccessInvitation(
-            $project,
-            $actor,
-            $inviteEmail,
-            hash('sha256', $plainToken),
-            new \DateTimeImmutable('+7 days'),
-        );
-
-        /** @var UserRepository $users */
-        $users = $em->getRepository(User::class);
-        $existingUser = $users->findOneBy(['email' => $inviteEmail]);
-        if ($existingUser instanceof User) {
-            $invitation->setInviteeUser($existingUser);
-        }
-
-        $project->addAccessInvitation($invitation);
-        $em->persist($invitation);
-        $this->sendInvitationEmail($invitation, $plainToken);
-        $this->addFlash('success', 'Invitation envoyée.');
     }
 
     private function sendInvitationEmail(ProjectAccessInvitation $invitation, string $plainToken): void
@@ -430,7 +399,7 @@ final class ProjectController extends AbstractController
     private function assertProjectOwnerOrAdmin(Project $project): void
     {
         $user = $this->getCurrentUser();
-        if ($user->isAdmin() || $project->getCreatedBy()->getId()->equals($user->getId())) {
+        if ($project->isManageableBy($user)) {
             return;
         }
 
@@ -444,5 +413,61 @@ final class ProjectController extends AbstractController
         }
 
         throw $this->createNotFoundException();
+    }
+
+    /**
+     * @param mixed $submitted
+     * @param list<User> $choices
+     * @return list<User>
+     */
+    private function normalizeSelectedUsers(mixed $submitted, array $choices): array
+    {
+        $byId = [];
+        foreach ($choices as $choice) {
+            $byId[$choice->getIdString()] = $choice;
+        }
+
+        $selected = [];
+        foreach ($this->flattenSubmittedValues($submitted) as $value) {
+            if ($value instanceof User) {
+                $selected[$value->getIdString()] = $value;
+
+                continue;
+            }
+
+            $id = is_scalar($value) ? trim((string) $value) : '';
+            if ('' !== $id && isset($byId[$id])) {
+                $selected[$id] = $byId[$id];
+            }
+        }
+
+        return array_values($selected);
+    }
+
+    /**
+     * @return list<mixed>
+     */
+    private function flattenSubmittedValues(mixed $submitted): array
+    {
+        if (null === $submitted) {
+            return [];
+        }
+
+        if ($submitted instanceof \Traversable) {
+            $submitted = iterator_to_array($submitted);
+        }
+
+        if (!is_array($submitted)) {
+            return [$submitted];
+        }
+
+        $flattened = [];
+        foreach ($submitted as $value) {
+            foreach ($this->flattenSubmittedValues($value) as $child) {
+                $flattened[] = $child;
+            }
+        }
+
+        return $flattened;
     }
 }

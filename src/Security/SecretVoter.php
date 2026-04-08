@@ -31,7 +31,14 @@ final class SecretVoter extends Voter
         }
 
         $project = $subject->getProject();
+        if (null === $project || !$project->isAccessibleBy($user)) {
+            return false;
+        }
 
-        return null !== $project && ($project->hasMember($user) || $project->getCreatedBy() === $user);
+        return match ($attribute) {
+            self::VIEW => true,
+            self::EDIT => $user->isLead() || ($user->isEditor() && $subject->getCreatedBy()?->getId()->equals($user->getId())),
+            default => false,
+        };
     }
 }

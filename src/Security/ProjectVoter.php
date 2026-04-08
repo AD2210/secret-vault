@@ -26,10 +26,10 @@ final class ProjectVoter extends Voter
             return false;
         }
 
-        if ($user->isAdmin()) {
-            return true;
-        }
-
-        return $subject->hasMember($user) || $subject->getCreatedBy() === $user;
+        return match ($attribute) {
+            self::VIEW => $subject->isAccessibleBy($user),
+            self::EDIT => $subject->isManageableBy($user),
+            default => false,
+        };
     }
 }

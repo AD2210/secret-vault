@@ -2,9 +2,11 @@
 
 {% block title %}Tableau de bord | Client Secrets Vault{% endblock %}
 {% block page_title %}Tableau de bord{% endblock %}
-{% block page_intro %}Vue d’ensemble des projets, des secrets chiffrés et de l’état de ton accès fort.{% endblock %}
+{% block page_intro %}Pilotage des projets affectés, de l’équipe et des secrets typés du vault.{% endblock %}
 {% block header_actions %}
-    <a class="button" href="{{ path('app_project_new') }}">Nouveau projet</a>
+    {% if currentUser.canCreateProjects %}
+        <a class="button" href="{{ path('app_project_new') }}">Nouveau projet</a>
+    {% endif %}
 {% endblock %}
 
 {% block body %}
@@ -24,8 +26,8 @@
                     <strong>{{ secretCount }}</strong>
                 </div>
                 <div class="metric">
-                    <span>2FA</span>
-                    <strong>{{ currentUser.totpAuthenticationEnabled ? 'Actif' : 'À finaliser' }}</strong>
+                    <span>Rôle</span>
+                    <strong>{{ currentUser.roleLabel }}</strong>
                 </div>
             </div>
         </section>
@@ -34,7 +36,7 @@
             <div class="content__header" style="margin-bottom: 16px;">
                 <div>
                     <h3 style="margin: 0;">Derniers projets</h3>
-                    <p>Seuls les projets dont tu es membre apparaissent ici.</p>
+                    <p>Tu retrouves ici les projets où tu peux consulter ou gérer les secrets selon ton rôle.</p>
                 </div>
             </div>
 
@@ -47,7 +49,7 @@
                             <div class="actions" style="justify-content: space-between;">
                                 <div>
                                     <strong>{{ project.name }}</strong>
-                                    <div class="muted">{{ project.client }}{% if project.domain %} · {{ project.domain }}{% endif %}</div>
+                                    <div class="muted">{{ project.client }}</div>
                                 </div>
                                 <a class="button button--ghost" href="{{ path('app_project_show', {id: project.idString}) }}">Ouvrir</a>
                             </div>
@@ -55,6 +57,18 @@
                     {% endfor %}
                 </div>
             {% endif %}
+        </section>
+
+        <section class="panel">
+            <div class="content__header" style="margin-bottom: 16px;">
+                <div>
+                    <h3 style="margin: 0;">Outils</h3>
+                    <p>Prépare des mots de passe, clés SSH et clés hexadécimales à injecter dans tes secrets.</p>
+                </div>
+            </div>
+            <div class="actions">
+                <a class="button button--ghost" href="{{ path('app_generator_index') }}">Ouvrir les générateurs</a>
+            </div>
         </section>
     </div>
 {% endblock %}

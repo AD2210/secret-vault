@@ -1,0 +1,117 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Générateurs | Client Secrets Vault{% endblock %}
+{% block page_title %}Générateurs{% endblock %}
+{% block page_intro %}Prépare des valeurs sûres pour les secrets du coffre avant affectation à un projet.{% endblock %}
+
+{% block body %}
+    <div class="stack">
+        <section class="panel">
+            <h3>Mot de passe</h3>
+            <form method="post" action="{{ path('app_generator_index') }}" class="stack" data-turbo="false">
+                <input type="hidden" name="kind" value="password">
+                <div class="form-grid">
+                    <div class="field"><label for="length">Longueur</label><input id="length" type="number" name="length" value="24" min="8"></div>
+                    <div class="field"><label><input type="checkbox" name="use_lowercase" checked> Minuscules</label></div>
+                    <div class="field"><label><input type="checkbox" name="use_uppercase" checked> Majuscules</label></div>
+                    <div class="field"><label><input type="checkbox" name="use_numbers" checked> Chiffres</label></div>
+                    <div class="field"><label><input type="checkbox" name="use_specials" checked> Caractères spéciaux</label></div>
+                </div>
+                <div class="actions"><button type="submit">Générer</button></div>
+            </form>
+
+            {% if result and kind == 'password' %}
+                <div class="grid generator-result">
+                    {% for label, value in result.values %}
+                        {% set singleLine = "\n" not in value and "\r" not in value %}
+                        <div class="generator-result__card" data-controller="copy-value">
+                            <div class="help">{{ label|replace({'_': ' '})|title }}</div>
+                            <div class="generator-result__value{{ singleLine ? ' generator-result__value--single-line' : '' }}">
+                                <div class="secret-box" data-copy-value-target="source">{{ value ?: 'Aucune valeur' }}</div>
+                                <button type="button" class="generator-result__copy" title="Copier" aria-label="Copier" data-copy-value-target="button" data-action="click->copy-value#copy">
+                                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                        <rect x="9" y="9" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.7"/>
+                                        <path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                                    </svg>
+                                    <span class="sr-only">Copier</span>
+                                </button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </section>
+
+        <section class="panel">
+            <h3>Clé hexadécimale</h3>
+            <form method="post" action="{{ path('app_generator_index') }}" class="stack" data-turbo="false">
+                <input type="hidden" name="kind" value="hex">
+                <div class="form-grid">
+                    <div class="field"><label for="hex_length">Longueur</label><input id="hex_length" type="number" name="hex_length" value="64" min="8"></div>
+                </div>
+                <div class="actions"><button type="submit">Générer</button></div>
+            </form>
+
+            {% if result and kind == 'hex' %}
+                <div class="grid generator-result">
+                    {% for label, value in result.values %}
+                        {% set singleLine = "\n" not in value and "\r" not in value %}
+                        <div class="generator-result__card" data-controller="copy-value">
+                            <div class="help">{{ label|replace({'_': ' '})|title }}</div>
+                            <div class="generator-result__value{{ singleLine ? ' generator-result__value--single-line' : '' }}">
+                                <div class="secret-box" data-copy-value-target="source">{{ value ?: 'Aucune valeur' }}</div>
+                                <button type="button" class="generator-result__copy" title="Copier" aria-label="Copier" data-copy-value-target="button" data-action="click->copy-value#copy">
+                                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                        <rect x="9" y="9" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.7"/>
+                                        <path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                                    </svg>
+                                    <span class="sr-only">Copier</span>
+                                </button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </section>
+
+        <section class="panel">
+            <h3>Clé SSH</h3>
+            <form method="post" action="{{ path('app_generator_index') }}" class="stack" data-turbo="false">
+                <input type="hidden" name="kind" value="ssh_key">
+                <div class="form-grid">
+                    <div class="field">
+                        <label for="ssh_type">Type</label>
+                        <select id="ssh_type" name="ssh_type">
+                            <option value="ed25519">ED25519</option>
+                            <option value="rsa">RSA</option>
+                        </select>
+                    </div>
+                    <div class="field"><label for="ssh_bits">Force RSA</label><input id="ssh_bits" type="number" name="ssh_bits" value="4096" min="2048" step="1024"></div>
+                    <div class="field"><label for="ssh_passphrase">Passphrase</label><input id="ssh_passphrase" type="text" name="ssh_passphrase"></div>
+                </div>
+                <div class="actions"><button type="submit">Générer</button></div>
+            </form>
+
+            {% if result and kind == 'ssh_key' %}
+                <div class="grid generator-result">
+                    {% for label, value in result.values %}
+                        {% set singleLine = "\n" not in value and "\r" not in value %}
+                        <div class="generator-result__card" data-controller="copy-value">
+                            <div class="help">{{ label|replace({'_': ' '})|title }}</div>
+                            <div class="generator-result__value{{ singleLine ? ' generator-result__value--single-line' : '' }}">
+                                <div class="secret-box" data-copy-value-target="source">{{ value ?: 'Aucune valeur' }}</div>
+                                <button type="button" class="generator-result__copy" title="Copier" aria-label="Copier" data-copy-value-target="button" data-action="click->copy-value#copy">
+                                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                        <rect x="9" y="9" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.7"/>
+                                        <path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                                    </svg>
+                                    <span class="sr-only">Copier</span>
+                                </button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </section>
+    </div>
+{% endblock %}

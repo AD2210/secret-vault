@@ -1,5 +1,7 @@
 import { startStimulusApp } from '@symfony/stimulus-bundle';
+import CopyValueController from './controllers/copy_value_controller.js';
+import RelationPickerController from './controllers/relation_picker_controller.js';
 
 const app = startStimulusApp();
-// register any custom, 3rd party controllers here
-// app.register('some_controller_name', SomeImportedController);
+app.register('copy-value', CopyValueController);
+app.register('relation-picker', RelationPickerController);

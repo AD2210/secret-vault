@@ -1,6 +1,18 @@
 
 services:
 ###> doctrine/doctrine-bundle ###
+  app:
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: 1
+    volumes:
+      - ./:/app
+  worker:
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: 1
+    volumes:
+      - ./:/app
   database:
     ports:
       - "${POSTGRES_PORT:-5452}:5432"

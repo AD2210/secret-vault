@@ -310,6 +310,20 @@ class Project
         return $this->members->contains($user);
     }
 
+    public function isAccessibleBy(User $user): bool
+    {
+        return $user->isAdmin() || $this->getCreatedBy()->getId()->equals($user->getId()) || $this->hasMember($user);
+    }
+
+    public function isManageableBy(User $user): bool
+    {
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        return $user->isLead() && $this->isAccessibleBy($user);
+    }
+
     /**
      * @return Collection<int, Secret>
      */

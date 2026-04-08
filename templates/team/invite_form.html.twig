@@ -1,0 +1,20 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ title }} | Client Secrets Vault{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block page_intro %}Prépare le rôle et les projets, puis envoie un lien expirant au futur membre.{% endblock %}
+
+{% block body %}
+    <section class="panel">
+        {{ form_start(form, {attr: {class: 'stack'}}) }}
+            <div class="form-grid">
+                <div class="field">{{ form_label(form.email) }}{{ form_widget(form.email) }}{{ form_errors(form.email) }}</div>
+                <div class="field">{{ form_label(form.role) }}{{ form_widget(form.role) }}{{ form_errors(form.role) }}</div>
+            </div>
+            <div class="actions">
+                <button type="submit">Envoyer l’invitation</button>
+                <a class="button button--ghost" href="{{ path('app_team_index') }}">Retour</a>
+            </div>
+        {{ form_end(form) }}
+    </section>
+{% endblock %}

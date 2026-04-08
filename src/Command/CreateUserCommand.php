@@ -34,6 +34,7 @@ final class CreateUserCommand extends Command
             ->addArgument('first-name', InputArgument::REQUIRED)
             ->addArgument('last-name', InputArgument::REQUIRED)
             ->addArgument('password', InputArgument::REQUIRED)
+            ->addOption('role', null, InputOption::VALUE_REQUIRED, 'Rôle métier (ROLE_ADMIN, ROLE_LEAD, ROLE_EDITOR, ROLE_USER)', User::ROLE_USER)
             ->addOption('admin', null, InputOption::VALUE_NONE, 'Attribue ROLE_ADMIN');
     }
 
@@ -53,7 +54,8 @@ final class CreateUserCommand extends Command
             (string) $input->getArgument('first-name'),
             (string) $input->getArgument('last-name'),
         );
-        $user->setRoles($input->getOption('admin') ? ['ROLE_ADMIN'] : []);
+        $role = $input->getOption('admin') ? User::ROLE_ADMIN : (string) $input->getOption('role');
+        $user->setPrimaryRole($role);
         $user->setPassword($this->hasher->hashPassword($user, (string) $input->getArgument('password')));
 
         $this->em->persist($user);

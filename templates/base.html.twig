@@ -22,15 +22,16 @@
                     {% set currentRoute = app.request.attributes.get('_route') %}
                     <a href="{{ path('app_dashboard') }}" class="{{ currentRoute == 'app_dashboard' ? 'is-active' : '' }}">Tableau de bord</a>
                     <a href="{{ path('app_project_index') }}" class="{{ currentRoute starts with 'app_project_' ? 'is-active' : '' }}">Projets</a>
-                    {% if is_granted('ROLE_ADMIN') %}
+                    {% if app.user and app.user.canManageUsers %}
                         <a href="{{ path('app_team_index') }}" class="{{ currentRoute starts with 'app_team_' ? 'is-active' : '' }}">Équipe</a>
                     {% endif %}
-                    <a href="{{ path('app_2fa_setup') }}" class="{{ currentRoute == 'app_2fa_setup' ? 'is-active' : '' }}">2FA</a>
+                    <a href="{{ path('app_generator_index') }}" class="{{ currentRoute starts with 'app_generator_' ? 'is-active' : '' }}">Générateurs</a>
                 </nav>
 
                 <div class="sidebar__foot">
                     <div>{{ app.user ? app.user.displayName : '' }}</div>
                     <div class="muted">{{ app.user ? app.user.email : '' }}</div>
+                    <div class="muted">{{ app.user ? app.user.roleLabel : '' }}</div>
                     <div class="actions" style="margin-top: 16px;">
                         <a class="button button--ghost" href="{{ path('app_logout') }}">Déconnexion</a>
                     </div>

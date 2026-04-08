@@ -1,0 +1,21 @@
+{% extends 'security/auth_base.html.twig' %}
+
+{% block title %}Invitation équipe | Client Secrets Vault{% endblock %}
+
+{% block body %}
+    <span class="brand__eyebrow">Invitation équipe</span>
+    <h1>{{ invitation.email }}</h1>
+
+    {% if state == 'accepted' %}
+        <p>Votre compte est prêt. Vous pouvez maintenant vous connecter au coffre.</p>
+        <a class="button" href="{{ path('app_login', {email: invitation.email}) }}">Se connecter</a>
+    {% elseif state == 'existing_account' %}
+        <p>Un compte existe déjà pour <strong>{{ invitation.email }}</strong>. Demandez au manager de vous affecter directement depuis l’écran Équipe.</p>
+    {% elseif state == 'revoked' %}
+        <p>Cette invitation a été révoquée.</p>
+    {% elseif state == 'expired' %}
+        <p>Cette invitation a expiré. Demandez une nouvelle invitation à votre manager.</p>
+    {% else %}
+        <p>Cette invitation n’est plus utilisable.</p>
+    {% endif %}
+{% endblock %}

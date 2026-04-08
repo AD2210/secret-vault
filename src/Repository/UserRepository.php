@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\Project;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -42,5 +43,33 @@ final class UserRepository extends ServiceEntityRepository implements PasswordUp
             ->addOrderBy('u.firstName', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * @return list<User>
+     */
+    public function findAssignableByManager(User $manager): array
+    {
+        $qb = $this->createQueryBuilder('u')
+            ->orderBy('u.lastName', 'ASC')
+            ->addOrderBy('u.firstName', 'ASC');
+
+        if ($manager->isLead() && !$manager->isAdmin()) {
+            $qb->andWhere('u.roles NOT LIKE :adminRole')
+                ->setParameter('adminRole', '%"ROLE_ADMIN"%');
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * @return list<Project>
+     */
+    public function extractManagedProjects(User $user): array
+    {
+        return array_values(array_filter(
+            $user->getProjects()->toArray(),
+            static fn (Project $project): bool => $project->isManageableBy($user),
+        ));
     }
 }

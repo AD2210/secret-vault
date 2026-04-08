@@ -2,40 +2,79 @@
 
 {% block title %}Équipe | Client Secrets Vault{% endblock %}
 {% block page_title %}Équipe{% endblock %}
-{% block page_intro %}Gestion des comptes internes pouvant accéder au coffre-fort client.{% endblock %}
+{% block page_intro %}Gestion des rôles et des projets affectés à chaque membre du vault.{% endblock %}
 {% block header_actions %}
     <a class="button" href="{{ path('app_team_new') }}">Inviter un utilisateur</a>
 {% endblock %}
 
 {% block body %}
-    <section class="panel">
-        {% if users is empty %}
-            <div class="empty-state">Aucun utilisateur.</div>
-        {% else %}
-            <table class="table">
-                <thead>
+    <div class="stack">
+        <section class="panel">
+            {% if users is empty %}
+                <div class="empty-state">Aucun utilisateur.</div>
+            {% else %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Nom</th>
+                            <th>Email</th>
+                            <th>Rôle</th>
+                            <th>Projets</th>
+                            <th>2FA</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                            <tr>
+                                <td>{{ user.displayName }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>{{ user.roleLabel }}</td>
+                                <td>{{ user.projects|length }}</td>
+                                <td>{{ user.totpAuthenticationEnabled ? 'Actif' : 'À activer' }}</td>
+                                <td>{{ user.active ? 'Actif' : 'Désactivé' }}</td>
+                                <td><a class="button button--ghost" href="{{ path('app_team_edit', {id: user.idString}) }}">Modifier</a></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </section>
+
+        <section class="panel">
+            <h3>Invitations en attente</h3>
+            {% if pendingInvitations is empty %}
+                <div class="empty-state">Aucune invitation active.</div>
+            {% else %}
+                <table class="table">
+                    <thead>
                     <tr>
-                        <th>Nom</th>
                         <th>Email</th>
                         <th>Rôle</th>
-                        <th>2FA</th>
-                        <th>Statut</th>
+                        <th>Expire le</th>
+                        <th>Invité par</th>
                         <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for user in users %}
-                        <tr>
-                            <td>{{ user.displayName }}</td>
-                            <td>{{ user.email }}</td>
-                            <td>{{ user.admin ? 'Admin' : 'Membre' }}</td>
-                            <td>{{ user.totpAuthenticationEnabled ? 'Actif' : 'À activer' }}</td>
-                            <td>{{ user.active ? 'Actif' : 'Désactivé' }}</td>
-                            <td><a class="button button--ghost" href="{{ path('app_team_edit', {id: user.idString}) }}">Modifier</a></td>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% endif %}
-    </section>
+                    </thead>
+                    <tbody>
+                        {% for invitation in pendingInvitations %}
+                        <tr>
+                            <td>{{ invitation.email }}</td>
+                            <td>{{ invitation.roleLabel }}</td>
+                            <td>{{ invitation.expiresAt|date('d/m/Y H:i') }}</td>
+                            <td>{{ invitation.invitedBy.displayName }}</td>
+                            <td>
+                                    <form method="post" action="{{ path('app_team_invitation_revoke', {id: invitation.idString}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('revoke-team-invitation-' ~ invitation.idString) }}">
+                                        <button class="button button--ghost" type="submit">Révoquer</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </section>
+    </div>
 {% endblock %}

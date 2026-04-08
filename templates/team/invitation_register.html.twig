@@ -1,0 +1,18 @@
+{% extends 'security/auth_base.html.twig' %}
+
+{% block title %}Invitation équipe | Client Secrets Vault{% endblock %}
+
+{% block body %}
+    <span class="brand__eyebrow">Invitation équipe</span>
+    <h1>Créer votre accès</h1>
+    <p>Vous avez été invité avec le rôle <strong>{{ invitation.roleLabel }}</strong>. Complétez vos informations pour activer votre compte.</p>
+
+    {{ form_start(form, {attr: {class: 'stack'}}) }}
+        <div class="field">{{ form_label(form.email) }}{{ form_widget(form.email) }}{{ form_errors(form.email) }}</div>
+        <div class="field">{{ form_label(form.firstName) }}{{ form_widget(form.firstName) }}{{ form_errors(form.firstName) }}</div>
+        <div class="field">{{ form_label(form.lastName) }}{{ form_widget(form.lastName) }}{{ form_errors(form.lastName) }}</div>
+        <div class="field">{{ form_label(form.plainPassword.first) }}{{ form_widget(form.plainPassword.first) }}{{ form_errors(form.plainPassword.first) }}</div>
+        <div class="field">{{ form_label(form.plainPassword.second) }}{{ form_widget(form.plainPassword.second) }}{{ form_errors(form.plainPassword.second) }}</div>
+        <button type="submit">Créer mon compte</button>
+    {{ form_end(form) }}
+{% endblock %}
