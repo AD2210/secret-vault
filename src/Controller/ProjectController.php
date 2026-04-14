@@ -14,10 +14,10 @@ use App\Form\SecretRevealType;
 use App\Repository\ProjectAccessInvitationRepository;
 use App\Repository\ProjectRepository;
 use App\Repository\UserRepository;
-use App\Security\ProjectVoter;
-use App\Security\SecretRevealGate;
 use App\Secrets\SecretPayloadCodec;
 use App\Secrets\SecretTypeRegistry;
+use App\Security\ProjectVoter;
+use App\Security\SecretRevealGate;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -394,20 +394,6 @@ final class ProjectController extends AbstractController
         return $user;
     }
 
-    private function sendInvitationEmail(ProjectAccessInvitation $invitation, string $plainToken): void
-    {
-        $this->mailer->send((new TemplatedEmail())
-            ->to(new Address($invitation->getEmail()))
-            ->subject(sprintf('Invitation au projet "%s"', $invitation->getProject()->getName()))
-            ->htmlTemplate('project/emails/invitation.html.twig')
-            ->context([
-                'invitation' => $invitation,
-                'acceptUrl' => $this->generateUrl('app_project_invitation_accept', [
-                    'token' => $plainToken,
-                ], UrlGeneratorInterface::ABSOLUTE_URL),
-            ]));
-    }
-
     private function sendInvitationApprovalRequest(ProjectAccessInvitation $invitation): void
     {
         $this->mailer->send((new TemplatedEmail())
@@ -442,8 +428,8 @@ final class ProjectController extends AbstractController
     }
 
     /**
-     * @param mixed $submitted
      * @param list<User> $choices
+     *
      * @return list<User>
      */
     private function normalizeSelectedUsers(mixed $submitted, array $choices): array
@@ -503,11 +489,11 @@ final class ProjectController extends AbstractController
         if ('' === $rootName) {
             $payload = $request->request->all();
 
-            return is_array($payload) ? ($payload[$field] ?? null) : null;
+            return $payload[$field] ?? null;
         }
 
         $payload = $request->request->all($rootName);
 
-        return is_array($payload) ? ($payload[$field] ?? null) : null;
+        return $payload[$field] ?? null;
     }
 }

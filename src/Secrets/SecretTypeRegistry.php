@@ -12,7 +12,7 @@ final class SecretTypeRegistry
      * @return array<string, array{
      *     label: string,
      *     description: string,
-     *     generator: null|string,
+     *     generator: string|null,
      *     fields: list<array{
      *         key: string,
      *         label: string,
@@ -129,7 +129,7 @@ final class SecretTypeRegistry
     }
 
     /**
-     * @return array{label: string, description: string, generator: null|string, fields: list<array<string, mixed>>}
+     * @return array{label: string, description: string, generator: string|null, fields: list<array<string, mixed>>}
      */
     public function get(string $type): array
     {

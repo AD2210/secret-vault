@@ -113,7 +113,8 @@ final class VaultKeyRing
                 continue;
             }
 
-            [$keyId, $hexKey] = array_pad(preg_split('/[:=]/', $pair, 2) ?: [], 2, null);
+            $parts = preg_split('/[:=]/', $pair, 2);
+            [$keyId, $hexKey] = array_pad(is_array($parts) ? $parts : [], 2, null);
             if (!is_string($keyId) || !is_string($hexKey)) {
                 throw new \InvalidArgumentException('VAULT_KMS_KEYRING must use the "key-id:key" format.');
             }

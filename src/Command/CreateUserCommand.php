@@ -54,7 +54,7 @@ final class CreateUserCommand extends Command
             (string) $input->getArgument('first-name'),
             (string) $input->getArgument('last-name'),
         );
-        $role = $input->getOption('admin') ? User::ROLE_ADMIN : (string) $input->getOption('role');
+        $role = true === $input->getOption('admin') ? User::ROLE_ADMIN : (string) $input->getOption('role');
         $user->setPrimaryRole($role);
         $user->setPassword($this->hasher->hashPassword($user, (string) $input->getArgument('password')));
 

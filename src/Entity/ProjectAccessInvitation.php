@@ -212,6 +212,16 @@ class ProjectAccessInvitation
         return 'En attente d’activation';
     }
 
+    public function getCreatedAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function getUpdatedAt(): \DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
+
     #[ORM\PrePersist]
     public function prePersist(): void
     {

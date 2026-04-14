@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Entity\User;
 use App\Entity\UserInvitation;
 use App\Form\TeamInvitationType;
-use App\Entity\User;
 use App\Form\UserType;
 use App\Repository\ProjectRepository;
 use App\Repository\UserInvitationRepository;
@@ -47,8 +47,7 @@ final class TeamController extends AbstractController
         EntityManagerInterface $em,
         UserRepository $users,
         UserInvitationRepository $invitations,
-    ): Response
-    {
+    ): Response {
         $this->denyUnlessCanManageUsers();
 
         $actor = $this->getCurrentUser();
@@ -109,8 +108,7 @@ final class TeamController extends AbstractController
         EntityManagerInterface $em,
         UserPasswordHasherInterface $hasher,
         ProjectRepository $projects,
-    ): Response
-    {
+    ): Response {
         $this->denyUnlessCanManageUsers();
         $this->denyUnlessCanManageUser($user);
 
@@ -250,15 +248,13 @@ final class TeamController extends AbstractController
                 continue;
             }
 
-            if (isset($selectedProjectIds[$project->getIdString()])) {
-                $user->addProject($project);
-            }
+            $user->addProject($project);
         }
     }
 
     /**
-     * @param mixed $submitted
      * @param list<\App\Entity\Project> $choices
+     *
      * @return list<\App\Entity\Project>
      */
     private function normalizeSelectedProjects(mixed $submitted, array $choices): array
@@ -328,12 +324,12 @@ final class TeamController extends AbstractController
         if ('' === $rootName) {
             $payload = $request->request->all();
 
-            return is_array($payload) ? ($payload[$field] ?? null) : null;
+            return $payload[$field] ?? null;
         }
 
         $payload = $request->request->all($rootName);
 
-        return is_array($payload) ? ($payload[$field] ?? null) : null;
+        return $payload[$field] ?? null;
     }
 
     private function sendInvitationEmail(UserInvitation $invitation, string $plainToken): void

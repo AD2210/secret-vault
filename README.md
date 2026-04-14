@@ -78,6 +78,14 @@ Pour tester `transit`, définis les variables `VAULT_TRANSIT_*` dans `.env.local
 composer qa:phpunit
 ```
 
+Analyse statique et format:
+
+```bash
+composer qa:phpstan
+composer qa:php-cs-fixer
+composer qa
+```
+
 ## Déploiement
 
 Fichiers utiles:

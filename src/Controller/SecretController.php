@@ -12,20 +12,20 @@ use App\Entity\Secret;
 use App\Entity\User;
 use App\Form\SecretRevealType;
 use App\Form\SecretType;
-use App\Security\SecretRevealGate;
-use App\Security\SecretVoter;
 use App\Secrets\SecretPayloadCodec;
 use App\Secrets\SecretTypeRegistry;
+use App\Security\SecretRevealGate;
+use App\Security\SecretVoter;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Scheb\TwoFactorBundle\Security\TwoFactor\Provider\Totp\TotpAuthenticatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Attribute\Route;
-use Scheb\TwoFactorBundle\Security\TwoFactor\Provider\Totp\TotpAuthenticatorInterface;
-use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
+use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[IsGranted('IS_AUTHENTICATED_FULLY')]
 final class SecretController extends AbstractController
@@ -143,7 +143,7 @@ final class SecretController extends AbstractController
         $limit = $limiter->consume();
         if (!$limit->isAccepted()) {
             $this->auditLogger->logSecretEvent(AuditLog::EVENT_SECRET_REVEAL_RATE_LIMITED, $secret, $user, $request, [
-                'retry_after' => $limit->getRetryAfter()?->format(DATE_ATOM),
+                'retry_after' => $limit->getRetryAfter()->format(DATE_ATOM),
             ]);
             $this->alerts->notifySecretRevealRateLimited($user, $secret, $request->getClientIp());
             $this->addFlash('error', 'Trop de tentatives TOTP. Réessayez dans quelques minutes.');

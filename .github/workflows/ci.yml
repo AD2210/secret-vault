@@ -35,5 +35,11 @@ jobs:
       - name: Lint Twig
         run: env -u DATABASE_URL php bin/console lint:twig templates
 
+      - name: PHPStan
+        run: composer qa:phpstan
+
+      - name: PHP CS Fixer
+        run: composer qa:php-cs-fixer
+
       - name: Tests
         run: composer qa:phpunit

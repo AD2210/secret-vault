@@ -77,6 +77,7 @@ final class VaultTransitClient
 
     /**
      * @param array<string, scalar|null>|null $body
+     *
      * @return array<string, mixed>
      */
     private function request(string $path, ?array $body = null, string $method = 'POST'): array
@@ -106,12 +107,7 @@ final class VaultTransitClient
             $response = $this->httpClient->request($method, $address.$path, $options);
             $payload = $response->toArray(false);
         } catch (ExceptionInterface $exception) {
-            throw new \RuntimeException(sprintf(
-                'Vault Transit request failed for %s %s: %s',
-                $method,
-                $address.$path,
-                $exception->getMessage(),
-            ), previous: $exception);
+            throw new \RuntimeException(sprintf('Vault Transit request failed for %s %s: %s', $method, $address.$path, $exception->getMessage()), previous: $exception);
         }
 
         if (isset($payload['errors']) && is_array($payload['errors']) && [] !== $payload['errors']) {

@@ -173,7 +173,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TotpTwo
      */
     public function setRoles(array $roles): static
     {
-        $this->roles = array_values(array_unique(array_filter($roles)));
+        $this->roles = array_values(array_unique(array_filter($roles, static fn (string $role): bool => '' !== $role)));
 
         return $this;
     }

@@ -113,7 +113,12 @@
                                         </div>
                                     </div>
                                     <div class="actions">
-                                        <button type="button" class="button button--ghost" data-action="click->modal#open"{% if isRevealed %} data-secret-visibility-target="trigger"{% endif %}>{{ isRevealed ? 'Prolonger' : 'Révéler 60s' }}</button>
+                                        <a
+                                            class="button button--ghost"
+                                            href="{{ path('app_project_show', {id: project.idString, reveal: secret.idString}) }}"
+                                            data-action="click->modal#open"
+                                            {% if isRevealed %}data-secret-visibility-target="trigger"{% endif %}
+                                        >{{ isRevealed ? 'Prolonger' : 'Révéler 60s' }}</a>
                                         {% if is_granted('SECRET_EDIT', secret) %}
                                             <a class="button button--ghost" href="{{ path('app_secret_edit', {id: secret.idString}) }}">Modifier</a>
                                         {% endif %}
@@ -132,7 +137,7 @@
                                             <h3 id="reveal-title-{{ secret.idString }}">{{ secret.name }}</h3>
                                             <p class="help">Validation TOTP requise pour ouvrir une fenêtre de consultation courte.</p>
                                         </div>
-                                        <button type="button" class="modal__close" aria-label="Fermer" data-action="click->modal#close">×</button>
+                                        <a class="modal__close" href="{{ path('app_project_show', {id: project.idString}) }}" aria-label="Fermer" data-action="click->modal#close">×</a>
                                     </div>
                                     {{ form_start(revealForms[secret.idString], {attr: {class: 'stack'}}) }}
                                         <div class="field">
@@ -142,7 +147,7 @@
                                         </div>
                                         <div class="actions">
                                             <button type="submit">Valider et révéler</button>
-                                            <button type="button" class="button button--ghost" data-action="click->modal#close">Annuler</button>
+                                            <a class="button button--ghost" href="{{ path('app_project_show', {id: project.idString}) }}" data-action="click->modal#close">Annuler</a>
                                         </div>
                                     {{ form_end(revealForms[secret.idString]) }}
                                 </div>
