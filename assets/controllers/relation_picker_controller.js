@@ -20,10 +20,13 @@ export default class extends Controller {
 
         this.element.classList.add('is-hidden');
         this.buildUi();
+        this.bindFormSubmit();
         this.render();
     }
 
     disconnect() {
+        this.form?.removeEventListener('submit', this.submitListener);
+        document.removeEventListener('click', this.documentClickListener, true);
         this.wrapper?.remove();
     }
 
@@ -31,25 +34,60 @@ export default class extends Controller {
         this.wrapper = document.createElement('div');
         this.wrapper.className = 'relation-picker';
 
+        this.control = document.createElement('button');
+        this.control.type = 'button';
+        this.control.className = 'relation-picker__control';
+        this.control.addEventListener('click', () => {
+            this.open();
+            this.searchInput.focus();
+        });
+
+        this.selectedContainer = document.createElement('div');
+        this.selectedContainer.className = 'relation-picker__selected';
+
         this.searchInput = document.createElement('input');
         this.searchInput.type = 'search';
         this.searchInput.className = 'relation-picker__search';
         this.searchInput.placeholder = this.placeholderValue;
         this.searchInput.autocomplete = 'off';
-        this.searchInput.addEventListener('input', () => this.render());
+        this.searchInput.addEventListener('focus', () => this.open());
+        this.searchInput.addEventListener('input', () => {
+            this.open();
+            this.render();
+        });
+        this.searchInput.addEventListener('keydown', (event) => this.handleKeydown(event));
 
-        this.selectedContainer = document.createElement('div');
-        this.selectedContainer.className = 'relation-picker__selected';
+        this.summary = document.createElement('div');
+        this.summary.className = 'relation-picker__summary';
 
         this.list = document.createElement('div');
-        this.list.className = 'relation-picker__list';
+        this.list.className = 'relation-picker__dropdown';
 
-        this.wrapper.append(this.searchInput, this.selectedContainer, this.list);
+        this.control.append(this.selectedContainer, this.searchInput);
+        this.wrapper.append(this.control, this.summary, this.list);
         this.element.insertAdjacentElement('afterend', this.wrapper);
+
+        this.documentClickListener = (event) => {
+            if (!this.wrapper.contains(event.target)) {
+                this.close();
+            }
+        };
+        document.addEventListener('click', this.documentClickListener, true);
+    }
+
+    bindFormSubmit() {
+        this.form = this.element.form;
+        if (!this.form) {
+            return;
+        }
+
+        this.submitListener = () => this.syncSelect();
+        this.form.addEventListener('submit', this.submitListener);
     }
 
     render() {
         this.renderSelected();
+        this.renderSummary();
         this.renderOptions();
         this.syncSelect();
     }
@@ -59,22 +97,43 @@ export default class extends Controller {
         const selected = this.options.filter((option) => option.selected);
 
         if (0 === selected.length) {
-            const empty = document.createElement('div');
-            empty.className = 'relation-picker__empty';
-            empty.textContent = this.selectedLabelValue;
-            this.selectedContainer.append(empty);
-
+            this.control.classList.remove('has-selection');
             return;
         }
 
+        this.control.classList.add('has-selection');
+
         for (const option of selected) {
-            const tag = document.createElement('button');
-            tag.type = 'button';
+            const tag = document.createElement('span');
             tag.className = 'relation-picker__tag';
-            tag.textContent = option.label;
-            tag.addEventListener('click', () => this.toggle(option.value, false));
+
+            const label = document.createElement('span');
+            label.className = 'relation-picker__tag-label';
+            label.textContent = option.label;
+
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'relation-picker__tag-remove';
+            remove.setAttribute('aria-label', `Retirer ${option.label}`);
+            remove.textContent = '×';
+            remove.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                this.toggle(option.value, false);
+                this.open();
+                this.searchInput.focus();
+            });
+
+            tag.append(label, remove);
             this.selectedContainer.append(tag);
         }
+    }
+
+    renderSummary() {
+        const selectedCount = this.options.filter((option) => option.selected).length;
+        this.summary.textContent = 0 === selectedCount
+            ? this.selectedLabelValue
+            : `${selectedCount} sélection${selectedCount > 1 ? 's' : ''}`;
     }
 
     renderOptions() {
@@ -101,8 +160,20 @@ export default class extends Controller {
             const item = document.createElement('button');
             item.type = 'button';
             item.className = 'relation-picker__option';
-            item.textContent = option.label;
-            item.addEventListener('click', () => this.toggle(option.value, true));
+            item.addEventListener('click', () => {
+                this.toggle(option.value, true);
+                this.open();
+                this.searchInput.focus();
+            });
+
+            const label = document.createElement('span');
+            label.textContent = option.label;
+
+            const add = document.createElement('span');
+            add.className = 'relation-picker__option-add';
+            add.textContent = 'Ajouter';
+
+            item.append(label, add);
             this.list.append(item);
         }
     }
@@ -115,6 +186,29 @@ export default class extends Controller {
 
         option.selected = selected;
         this.render();
+    }
+
+    handleKeydown(event) {
+        if ('Backspace' === event.key && '' === this.searchInput.value.trim()) {
+            const selected = this.options.filter((option) => option.selected);
+            const last = selected.at(-1);
+            if (last) {
+                this.toggle(last.value, false);
+            }
+        }
+
+        if ('Escape' === event.key) {
+            this.close();
+            this.searchInput.blur();
+        }
+    }
+
+    open() {
+        this.wrapper.classList.add('is-open');
+    }
+
+    close() {
+        this.wrapper.classList.remove('is-open');
     }
 
     syncSelect() {

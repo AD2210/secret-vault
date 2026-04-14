@@ -13,8 +13,15 @@ services:
       APP_SHARE_DIR: ${APP_SHARE_DIR:-var/share}
       APP_2FA_ISSUER: ${APP_2FA_ISSUER:-Client Secrets Vault}
       VAULT_ENCRYPTION_KEY: ${VAULT_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      VAULT_KMS_PROVIDER: ${VAULT_KMS_PROVIDER:-local}
+      VAULT_ACTIVE_KEY_ID: ${VAULT_ACTIVE_KEY_ID:-local-2026-04}
+      VAULT_KMS_KEYRING: ${VAULT_KMS_KEYRING:-local-2026-04:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      VAULT_TRANSIT_ADDR: ${VAULT_TRANSIT_ADDR:-}
+      VAULT_TRANSIT_TOKEN: ${VAULT_TRANSIT_TOKEN:-}
+      VAULT_TRANSIT_NAMESPACE: ${VAULT_TRANSIT_NAMESPACE:-}
+      VAULT_TRANSIT_KEY_NAME: ${VAULT_TRANSIT_KEY_NAME:-client-secret-vault}
       SYMFONY_TRUSTED_PROXIES: ${SYMFONY_TRUSTED_PROXIES:-private_ranges}
-      DEFAULT_URI: ${DEFAULT_URI:-https://secret-vault.dsn-dev.com}
+      DEFAULT_URI: ${DEFAULT_URI:-http://secret-vault.localhost:8090}
       DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-!ChangeMe!}@database:5432/${POSTGRES_DB:-client_secret_vault}?serverVersion=16&charset=utf8}
       MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN:-doctrine://default?auto_setup=0}
       MAILER_DSN: ${MAILER_DSN:-null://null}
@@ -50,8 +57,15 @@ services:
       APP_SHARE_DIR: ${APP_SHARE_DIR:-var/share}
       APP_2FA_ISSUER: ${APP_2FA_ISSUER:-Client Secrets Vault}
       VAULT_ENCRYPTION_KEY: ${VAULT_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      VAULT_KMS_PROVIDER: ${VAULT_KMS_PROVIDER:-local}
+      VAULT_ACTIVE_KEY_ID: ${VAULT_ACTIVE_KEY_ID:-local-2026-04}
+      VAULT_KMS_KEYRING: ${VAULT_KMS_KEYRING:-local-2026-04:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      VAULT_TRANSIT_ADDR: ${VAULT_TRANSIT_ADDR:-}
+      VAULT_TRANSIT_TOKEN: ${VAULT_TRANSIT_TOKEN:-}
+      VAULT_TRANSIT_NAMESPACE: ${VAULT_TRANSIT_NAMESPACE:-}
+      VAULT_TRANSIT_KEY_NAME: ${VAULT_TRANSIT_KEY_NAME:-client-secret-vault}
       SYMFONY_TRUSTED_PROXIES: ${SYMFONY_TRUSTED_PROXIES:-private_ranges}
-      DEFAULT_URI: ${DEFAULT_URI:-https://secret-vault.dsn-dev.com}
+      DEFAULT_URI: ${DEFAULT_URI:-http://secret-vault.localhost:8090}
       DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-!ChangeMe!}@database:5432/${POSTGRES_DB:-client_secret_vault}?serverVersion=16&charset=utf8}
       MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN:-doctrine://default?auto_setup=0}
       MAILER_DSN: ${MAILER_DSN:-null://null}

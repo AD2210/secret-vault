@@ -21,6 +21,7 @@ use App\Secrets\SecretTypeRegistry;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mailer\MailerInterface;
@@ -298,16 +299,20 @@ final class ProjectController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $selectedMembers = $this->normalizeSelectedUsers(
-                $form->get('members')->getData(),
+                $this->submittedFieldValues($request, $form, 'members') ?? $form->get('members')->getData(),
                 $choices,
             );
+            $selectedMemberIds = [];
+            foreach ($selectedMembers as $member) {
+                $selectedMemberIds[$member->getIdString()] = true;
+            }
 
             foreach ($project->getMembers()->toArray() as $member) {
                 if ($project->getCreatedBy()->getId()->equals($member->getId())) {
                     continue;
                 }
 
-                if (!in_array($member, $selectedMembers, true)) {
+                if (!isset($selectedMemberIds[$member->getIdString()])) {
                     $project->removeMember($member);
                 }
             }
@@ -490,5 +495,19 @@ final class ProjectController extends AbstractController
         }
 
         return $flattened;
+    }
+
+    private function submittedFieldValues(Request $request, FormInterface $form, string $field): mixed
+    {
+        $rootName = $form->getName();
+        if ('' === $rootName) {
+            $payload = $request->request->all();
+
+            return is_array($payload) ? ($payload[$field] ?? null) : null;
+        }
+
+        $payload = $request->request->all($rootName);
+
+        return is_array($payload) ? ($payload[$field] ?? null) : null;
     }
 }

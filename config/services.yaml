@@ -13,6 +13,16 @@ parameters:
         - app_2fa_setup
         - 2fa_login
         - 2fa_login_check
+    app.security.allowed_idle_routes:
+        - app_login
+        - app_logout
+        - app_2fa_setup
+        - 2fa_login
+        - 2fa_login_check
+    app.security.excluded_header_routes:
+        - _wdt
+        - _profiler
+    app.security.session_idle_timeout: 900
     app.security.secret_reveal_ttl: 60
     app.security.alert_recipients: '%env(csv:SECURITY_ALERT_RECIPIENTS)%'
 
@@ -33,6 +43,15 @@ services:
     App\EventSubscriber\ForceTotpEnrollmentSubscriber:
         arguments:
             $allowedRoutes: '%app.vault.allowed_totp_setup_routes%'
+
+    App\EventSubscriber\SecurityHeadersSubscriber:
+        arguments:
+            $excludedRoutes: '%app.security.excluded_header_routes%'
+
+    App\EventSubscriber\SessionIdleTimeoutSubscriber:
+        arguments:
+            $timeoutSeconds: '%app.security.session_idle_timeout%'
+            $allowedRoutes: '%app.security.allowed_idle_routes%'
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

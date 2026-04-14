@@ -31,6 +31,10 @@ final class SecurityController extends AbstractController
             }
         }
 
+        if ('1' === (string) $request->query->get('timed_out', '')) {
+            $this->addFlash('error', 'Session expirée après inactivité. Reconnectez-vous.');
+        }
+
         return $this->render('security/login.html.twig', [
             'last_username' => $lastUsername,
             'error' => $authenticationUtils->getLastAuthenticationError(),

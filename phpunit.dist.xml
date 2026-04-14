@@ -16,6 +16,14 @@
         <server name="APP_ENV" value="test" force="true" />
         <server name="DATABASE_URL" value="sqlite:///%kernel.project_dir%/var/data_test.db" force="true" />
         <server name="SYMFONY_TRUSTED_PROXIES" value="private_ranges" force="true" />
+        <server name="VAULT_ENCRYPTION_KEY" value="abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789" force="true" />
+        <server name="VAULT_KMS_PROVIDER" value="local" force="true" />
+        <server name="VAULT_ACTIVE_KEY_ID" value="test-2026-04" force="true" />
+        <server name="VAULT_KMS_KEYRING" value="test-2026-04:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789" force="true" />
+        <server name="VAULT_TRANSIT_ADDR" value="" force="true" />
+        <server name="VAULT_TRANSIT_TOKEN" value="" force="true" />
+        <server name="VAULT_TRANSIT_NAMESPACE" value="" force="true" />
+        <server name="VAULT_TRANSIT_KEY_NAME" value="client-secret-vault-test" force="true" />
         <server name="SHELL_VERBOSITY" value="-1" />
     </php>
 

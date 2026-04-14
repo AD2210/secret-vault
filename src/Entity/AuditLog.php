@@ -15,6 +15,8 @@ class AuditLog
     public const string EVENT_SECRET_CREATED = 'secret.created';
     public const string EVENT_SECRET_UPDATED = 'secret.updated';
     public const string EVENT_SECRET_REVEAL_GRANTED = 'secret.reveal_granted';
+    public const string EVENT_SECRET_REVEAL_DENIED = 'secret.reveal_denied';
+    public const string EVENT_SECRET_REVEAL_RATE_LIMITED = 'secret.reveal_rate_limited';
     public const string EVENT_SECRET_COPIED = 'secret.copied';
 
     #[ORM\Id]

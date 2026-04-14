@@ -12,6 +12,12 @@ framework:
         gc_maxlifetime: 1800
         metadata_update_threshold: 60
 
+    rate_limiter:
+        secret_reveal:
+            policy: sliding_window
+            limit: 5
+            interval: '5 minutes'
+
     #esi: true
     #fragments: true
 

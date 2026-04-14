@@ -56,4 +56,36 @@ final readonly class SecurityAlertNotifier
 
         $this->mailer->send($email);
     }
+
+    public function notifySecretRevealRateLimited(User $actor, Secret $secret, ?string $ipAddress): void
+    {
+        if ([] === $this->recipients) {
+            return;
+        }
+
+        $email = (new Email())
+            ->subject(sprintf('Alerte sécurité: tentatives TOTP bloquées pour "%s"', $secret->getName()))
+            ->text(implode("\n", [
+                sprintf('Utilisateur: %s <%s>', $actor->getDisplayName(), $actor->getEmail()),
+                sprintf('Projet: %s', $secret->getProject()?->getName() ?? 'n/a'),
+                sprintf('Secret: %s', $secret->getName()),
+                sprintf('IP: %s', $ipAddress ?? 'inconnue'),
+                sprintf('Date: %s', (new \DateTimeImmutable())->format(DATE_ATOM)),
+            ]));
+
+        foreach ($this->recipients as $recipient) {
+            $normalized = trim($recipient);
+            if ('' === $normalized) {
+                continue;
+            }
+
+            $email->addTo(new Address($normalized));
+        }
+
+        if ([] === $email->getTo()) {
+            return;
+        }
+
+        $this->mailer->send($email);
+    }
 }

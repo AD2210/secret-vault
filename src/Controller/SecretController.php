@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Audit\AuditLogger;
+use App\Audit\SecurityAlertNotifier;
 use App\Entity\AuditLog;
 use App\Entity\Project;
 use App\Entity\Secret;
@@ -16,6 +17,7 @@ use App\Security\SecretVoter;
 use App\Secrets\SecretPayloadCodec;
 use App\Secrets\SecretTypeRegistry;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -23,6 +25,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Scheb\TwoFactorBundle\Security\TwoFactor\Provider\Totp\TotpAuthenticatorInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 
 #[IsGranted('IS_AUTHENTICATED_FULLY')]
 final class SecretController extends AbstractController
@@ -31,8 +34,11 @@ final class SecretController extends AbstractController
         private readonly SecretPayloadCodec $payloadCodec,
         private readonly SecretTypeRegistry $secretTypes,
         private readonly AuditLogger $auditLogger,
+        private readonly SecurityAlertNotifier $alerts,
         private readonly SecretRevealGate $revealGate,
         private readonly TotpAuthenticatorInterface $totpAuthenticator,
+        #[Autowire(service: 'limiter.secret_reveal')]
+        private readonly RateLimiterFactory $secretRevealLimiter,
     ) {
     }
 
@@ -133,6 +139,21 @@ final class SecretController extends AbstractController
             return $this->redirectToRoute('app_2fa_setup');
         }
 
+        $limiter = $this->secretRevealLimiter->create(sprintf('%s|%s', $user->getIdString(), $request->getClientIp() ?? 'unknown'));
+        $limit = $limiter->consume();
+        if (!$limit->isAccepted()) {
+            $this->auditLogger->logSecretEvent(AuditLog::EVENT_SECRET_REVEAL_RATE_LIMITED, $secret, $user, $request, [
+                'retry_after' => $limit->getRetryAfter()?->format(DATE_ATOM),
+            ]);
+            $this->alerts->notifySecretRevealRateLimited($user, $secret, $request->getClientIp());
+            $this->addFlash('error', 'Trop de tentatives TOTP. Réessayez dans quelques minutes.');
+
+            return $this->redirectToRoute('app_project_show', [
+                'id' => $projectId,
+                'reveal' => $secret->getIdString(),
+            ]);
+        }
+
         $form = $this->createForm(SecretRevealType::class);
         $form->handleRequest($request);
 
@@ -149,6 +170,9 @@ final class SecretController extends AbstractController
             }
 
             $this->addFlash('error', 'Le code TOTP est invalide.');
+            $this->auditLogger->logSecretEvent(AuditLog::EVENT_SECRET_REVEAL_DENIED, $secret, $user, $request, [
+                'remaining_tokens' => $limit->getRemainingTokens(),
+            ]);
         }
 
         return $this->redirectToRoute('app_project_show', [

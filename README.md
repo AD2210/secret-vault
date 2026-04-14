@@ -47,17 +47,19 @@ make up
 
 Accès locaux:
 
-- app: `http://127.0.0.1:8090`
-- health: `http://127.0.0.1:8090/healthz`
+- app: `http://secret-vault.localhost:8090`
+- health: `http://secret-vault.localhost:8090/healthz`
 - PostgreSQL: `127.0.0.1:5452`
 
 Le port hôte Postgres est volontairement `5452` pour éviter le conflit avec un `5432` déjà occupé sur ta machine.
+Le suffixe `.localhost` résout directement vers ta machine, donc pas besoin d'ajouter une entrée dans `/etc/hosts`.
 
 ## Variables importantes
 
 - `APP_SECRET`
 - `APP_2FA_ISSUER`
 - `VAULT_ENCRYPTION_KEY`
+- `VAULT_KMS_PROVIDER`
 - `DATABASE_URL`
 - `DEFAULT_URI`
 
@@ -66,6 +68,9 @@ Le port hôte Postgres est volontairement `5452` pour éviter le conflit avec un
 ```bash
 php -r "echo bin2hex(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)), PHP_EOL;"
 ```
+
+En local, le dépôt fonctionne par défaut avec `VAULT_KMS_PROVIDER=local`.
+Pour tester `transit`, définis les variables `VAULT_TRANSIT_*` dans `.env.local` et assure-toi qu'une instance Vault joignable est disponible.
 
 ## Tests
 

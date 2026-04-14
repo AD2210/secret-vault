@@ -45,15 +45,15 @@ RUN mkdir -p var/cache var/log var/share \
         'APP_2FA_ISSUER="Client Secrets Vault"' \
         'SYMFONY_TRUSTED_PROXIES=private_ranges' \
         'VAULT_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' \
-        'DEFAULT_URI=http://localhost' \
+        'DEFAULT_URI=http://secret-vault.localhost:8090' \
         'DATABASE_URL=postgresql://app:build-password@database:5432/client_secret_vault?serverVersion=16&charset=utf8' \
         'MESSENGER_TRANSPORT_DSN=doctrine://default?auto_setup=0' \
         'MAILER_DSN=null://null' \
         > /app/.env \
     && composer dump-autoload --classmap-authoritative --no-dev --no-interaction --no-scripts \
-    && APP_ENV=prod APP_DEBUG=0 APP_SECRET=build-secret APP_SHARE_DIR=var/share APP_2FA_ISSUER='Client Secrets Vault' SYMFONY_TRUSTED_PROXIES='private_ranges' VAULT_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef DEFAULT_URI='http://localhost' DATABASE_URL='postgresql://app:build-password@database:5432/client_secret_vault?serverVersion=16&charset=utf8' MESSENGER_TRANSPORT_DSN='doctrine://default?auto_setup=0' MAILER_DSN='null://null' php bin/console importmap:install \
-    && APP_ENV=prod APP_DEBUG=0 APP_SECRET=build-secret APP_SHARE_DIR=var/share APP_2FA_ISSUER='Client Secrets Vault' SYMFONY_TRUSTED_PROXIES='private_ranges' VAULT_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef DEFAULT_URI='http://localhost' DATABASE_URL='postgresql://app:build-password@database:5432/client_secret_vault?serverVersion=16&charset=utf8' MESSENGER_TRANSPORT_DSN='doctrine://default?auto_setup=0' MAILER_DSN='null://null' php bin/console asset-map:compile \
-    && APP_ENV=prod APP_DEBUG=0 APP_SECRET=build-secret APP_SHARE_DIR=var/share APP_2FA_ISSUER='Client Secrets Vault' SYMFONY_TRUSTED_PROXIES='private_ranges' VAULT_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef DEFAULT_URI='http://localhost' DATABASE_URL='postgresql://app:build-password@database:5432/client_secret_vault?serverVersion=16&charset=utf8' MESSENGER_TRANSPORT_DSN='doctrine://default?auto_setup=0' MAILER_DSN='null://null' php bin/console cache:clear --env=prod --no-debug
+    && APP_ENV=prod APP_DEBUG=0 APP_SECRET=build-secret APP_SHARE_DIR=var/share APP_2FA_ISSUER='Client Secrets Vault' SYMFONY_TRUSTED_PROXIES='private_ranges' VAULT_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef DEFAULT_URI='http://secret-vault.localhost:8090' DATABASE_URL='postgresql://app:build-password@database:5432/client_secret_vault?serverVersion=16&charset=utf8' MESSENGER_TRANSPORT_DSN='doctrine://default?auto_setup=0' MAILER_DSN='null://null' php bin/console importmap:install \
+    && APP_ENV=prod APP_DEBUG=0 APP_SECRET=build-secret APP_SHARE_DIR=var/share APP_2FA_ISSUER='Client Secrets Vault' SYMFONY_TRUSTED_PROXIES='private_ranges' VAULT_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef DEFAULT_URI='http://secret-vault.localhost:8090' DATABASE_URL='postgresql://app:build-password@database:5432/client_secret_vault?serverVersion=16&charset=utf8' MESSENGER_TRANSPORT_DSN='doctrine://default?auto_setup=0' MAILER_DSN='null://null' php bin/console asset-map:compile \
+    && APP_ENV=prod APP_DEBUG=0 APP_SECRET=build-secret APP_SHARE_DIR=var/share APP_2FA_ISSUER='Client Secrets Vault' SYMFONY_TRUSTED_PROXIES='private_ranges' VAULT_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef DEFAULT_URI='http://secret-vault.localhost:8090' DATABASE_URL='postgresql://app:build-password@database:5432/client_secret_vault?serverVersion=16&charset=utf8' MESSENGER_TRANSPORT_DSN='doctrine://default?auto_setup=0' MAILER_DSN='null://null' php bin/console cache:clear --env=prod --no-debug
 
 EXPOSE 80
 CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]

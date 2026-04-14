@@ -14,6 +14,7 @@ use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mailer\MailerInterface;
@@ -114,6 +115,10 @@ final class TeamController extends AbstractController
         $this->denyUnlessCanManageUser($user);
 
         $manageableProjects = $projects->findManageableByUser($this->getCurrentUser());
+        $manageableProjectIds = [];
+        foreach ($manageableProjects as $project) {
+            $manageableProjectIds[$project->getIdString()] = true;
+        }
         $form = $this->createForm(UserType::class, $user, [
             'require_password' => false,
             'current_role' => $user->getPrimaryRole(),
@@ -121,7 +126,7 @@ final class TeamController extends AbstractController
             'project_choices' => $manageableProjects,
             'selected_projects' => array_values(array_filter(
                 $user->getProjects()->toArray(),
-                static fn (\App\Entity\Project $project): bool => in_array($project, $manageableProjects, true),
+                static fn (\App\Entity\Project $project): bool => isset($manageableProjectIds[$project->getIdString()]),
             )),
         ]);
         $form->handleRequest($request);
@@ -140,7 +145,10 @@ final class TeamController extends AbstractController
 
             $this->synchronizeProjects(
                 $user,
-                $this->normalizeSelectedProjects($form->get('projects')->getData(), $manageableProjects),
+                $this->normalizeSelectedProjects(
+                    $this->submittedFieldValues($request, $form, 'projects') ?? $form->get('projects')->getData(),
+                    $manageableProjects,
+                ),
                 $manageableProjects,
             );
             $em->flush();
@@ -224,12 +232,25 @@ final class TeamController extends AbstractController
      */
     private function synchronizeProjects(User $user, array $selectedProjects, array $manageableProjects): void
     {
-        foreach ($manageableProjects as $project) {
-            $user->removeProject($project);
+        $selectedProjectIds = [];
+        foreach ($selectedProjects as $project) {
+            $selectedProjectIds[$project->getIdString()] = true;
         }
 
-        foreach ($selectedProjects as $project) {
-            if (in_array($project, $manageableProjects, true)) {
+        foreach ($manageableProjects as $project) {
+            if (!isset($selectedProjectIds[$project->getIdString()])) {
+                $user->removeProject($project);
+
+                continue;
+            }
+
+            if ($project->getCreatedBy()->getId()->equals($user->getId())) {
+                $user->addProject($project);
+
+                continue;
+            }
+
+            if (isset($selectedProjectIds[$project->getIdString()])) {
                 $user->addProject($project);
             }
         }
@@ -299,6 +320,20 @@ final class TeamController extends AbstractController
         }
 
         return $user;
+    }
+
+    private function submittedFieldValues(Request $request, FormInterface $form, string $field): mixed
+    {
+        $rootName = $form->getName();
+        if ('' === $rootName) {
+            $payload = $request->request->all();
+
+            return is_array($payload) ? ($payload[$field] ?? null) : null;
+        }
+
+        $payload = $request->request->all($rootName);
+
+        return is_array($payload) ? ($payload[$field] ?? null) : null;
     }
 
     private function sendInvitationEmail(UserInvitation $invitation, string $plainToken): void
