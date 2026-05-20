@@ -94,6 +94,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - backend
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-client_secret_vault}"]
       interval: 10s
